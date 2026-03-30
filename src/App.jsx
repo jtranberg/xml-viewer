@@ -218,24 +218,26 @@ if (physicalProperties.length > 0) {
         ? getTextFromDescendants(unitEl, "MarketingName")
         : "";
 
-      const files = getChildrenByLocalName(unitNode, "File");
+      const files = [...unitNode.getElementsByTagName("*")]
+  .filter((el) => el.localName === "File");
 
-      const photos = files
-        .map((fileNode) => {
-          const fileType = getTextFromDescendants(fileNode, "FileType");
-          const src = getTextFromDescendants(fileNode, "Src");
-          return { fileType, src };
-        })
-        .filter((f) => f.src)
-        .sort((a, b) => {
-          const rankA = a.fileType === "Photo" ? 0 : 1;
-          const rankB = b.fileType === "Photo" ? 0 : 1;
-          return rankA - rankB;
-        })
-        .map((f) => f.src);
+const photos = files
+  .map((fileNode) => {
+    const fileType = getTextFromDescendants(fileNode, "FileType");
+    const src = getTextFromDescendants(fileNode, "Src");
+    const rank = Number(getTextFromDescendants(fileNode, "Rank") || "999");
+    return { fileType, src, rank };
+  })
+  .filter((f) => f.src)
+  .sort((a, b) => {
+    const typeRankA = a.fileType === "Photo" ? 0 : 1;
+    const typeRankB = b.fileType === "Photo" ? 0 : 1;
+    if (typeRankA !== typeRankB) return typeRankA - typeRankB;
+    return a.rank - b.rank;
+  })
+  .map((f) => f.src);
 
-      const photo = photos[0] || "";
-
+const photo = photos[0] || "";
       mitsListings.push({
         propertyName,
         address1,
@@ -408,14 +410,15 @@ if (physicalProperties.length > 0) {
             <div className="listing-grid">
               {listings.map((listing, index) => {
                 const imageKey = `${listing.propertyName}-${listing.unitNumber}-${index}`;
-                const currentImage = selectedImages[imageKey] || listing.photo;
+                const currentImage =
+  selectedImages[imageKey] || listing.photo || listing.photos?.[0] || "";
 
                 return (
                   <div
-                    className={`listing-card ${listing.photo ? "has-image" : "no-image"}`}
+                    className={`listing-card ${(listing.photo || listing.photos?.length) ? "has-image" : "no-image"}`}
                     key={imageKey}
                   >
-                    {listing.photo && (
+                    {(listing.photo || listing.photos?.length) && (
                       <div className="listing-media">
                         <div className="listing-image-wrap">
                           <img
