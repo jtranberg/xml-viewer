@@ -474,16 +474,22 @@ export default function XmlFeedViewerApp() {
                       {listing.email && <span>{listing.email}</span>}
                     </div>
 
-                    {(listing.unitPageSlug || listing.website) && (
-                      <a
-                        href={listing.unitPageSlug || listing.website}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="listing-button"
-                      >
-                        View Property
-                      </a>
-                    )}
+                   {(listing.unitPageSlug || listing.website) && (
+  <a
+    href={
+      listing.unitPageSlug
+        ? listing.unitPageSlug.startsWith("http")
+          ? listing.unitPageSlug
+          : `https://www.wallfinancialcorporation.com/units/${listing.unitPageSlug}`
+        : listing.website
+    }
+    target="_blank"
+    rel="noreferrer"
+    className="listing-button"
+  >
+    View Property
+  </a>
+)}
                   </div>
                 </div>
               ))}
