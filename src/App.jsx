@@ -205,6 +205,11 @@ export default function XmlFeedViewerApp() {
             }
           }
 
+          const photo =
+            [...unitNode.getElementsByTagName("*")].find(
+              (el) => el.localName === "Photo"
+            )?.textContent?.trim() || "";
+
           mitsListings.push({
             propertyName,
             address1,
@@ -227,7 +232,7 @@ export default function XmlFeedViewerApp() {
             available: "true",
             availableDate,
             occupancyStatus: "",
-            photo: "",
+            photo,
             unitPageSlug: unitUrl,
           });
         });
@@ -370,21 +375,21 @@ export default function XmlFeedViewerApp() {
           ) : (
             <div className="listing-grid">
               {listings.map((listing, index) => (
-               <div
-  className={`listing-card ${listing.photo ? "has-image" : "no-image"}`}
-  key={`${listing.propertyName}-${listing.unitNumber}-${index}`}
->
-  {listing.photo ? (
-    <div className="listing-image-wrap">
-      <img
-        src={listing.photo}
-        alt={`${listing.propertyName} Unit ${listing.unitNumber}`}
-        className="listing-image"
-      />
-    </div>
-  ) : null}
+                <div
+                  className={`listing-card ${listing.photo ? "has-image" : "no-image"}`}
+                  key={`${listing.propertyName}-${listing.unitNumber}-${index}`}
+                >
+                  {listing.photo ? (
+                    <div className="listing-image-wrap">
+                      <img
+                        src={listing.photo}
+                        alt={`${listing.propertyName} Unit ${listing.unitNumber}`}
+                        className="listing-image"
+                      />
+                    </div>
+                  ) : null}
 
-  <div className="listing-content">
+                  <div className="listing-content">
                     <h2>{listing.propertyName || "Unnamed Property"}</h2>
 
                     <p className="address">
