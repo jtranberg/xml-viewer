@@ -228,7 +228,7 @@ export default function XmlFeedViewerApp() {
             beds: "",
             baths: "",
             sqft: "",
-            rent: "",
+            rent: getTextFromDescendants(unitNode, "MarketRent") || "",
             available: "true",
             availableDate,
             occupancyStatus: "",
