@@ -149,112 +149,129 @@ export default function XmlFeedViewerApp() {
     }
 
     const physicalProperties = allNodes.filter(
-      (el) => el.localName === "PhysicalProperty",
-    );
+  (el) => el.localName === "PhysicalProperty",
+);
 
-    if (physicalProperties.length > 0) {
-      const mitsListings = [];
+if (physicalProperties.length > 0) {
+  const mitsListings = [];
 
-      physicalProperties.forEach((physicalProperty) => {
-        const property = getFirstChildByLocalName(physicalProperty, "Property");
-        if (!property) return;
+  physicalProperties.forEach((physicalProperty) => {
+    const property = getFirstChildByLocalName(physicalProperty, "Property");
+    if (!property) return;
 
-        const propertyIdNode = getFirstChildByLocalName(property, "PropertyID");
-        const infoNode = getFirstChildByLocalName(property, "Information");
-        const unitNodes = getChildrenByLocalName(property, "ILS_Unit");
+    const propertyIdNode = getFirstChildByLocalName(property, "PropertyID");
+    const infoNode = getFirstChildByLocalName(property, "Information");
+    const unitNodes = getChildrenByLocalName(property, "ILS_Unit");
 
-        const propertyName = propertyIdNode
-          ? getTextFromDescendants(propertyIdNode, "MarketingName")
-          : "";
-        const address1 = propertyIdNode
-          ? getTextFromDescendants(propertyIdNode, "AddressLine1")
-          : "";
-        const city = propertyIdNode
-          ? getTextFromDescendants(propertyIdNode, "City")
-          : "";
-        const region = propertyIdNode
-          ? getTextFromDescendants(propertyIdNode, "State")
-          : "";
-        const postal = propertyIdNode
-          ? getTextFromDescendants(propertyIdNode, "PostalCode")
-          : "";
-        const website = propertyIdNode
-          ? getTextFromDescendants(propertyIdNode, "WebSite")
-          : "";
-        const email = propertyIdNode
-          ? getTextFromDescendants(propertyIdNode, "Email")
-          : "";
-        const description = infoNode
-          ? getTextFromDescendants(infoNode, "LongDescription")
-          : "";
+    const propertyName = propertyIdNode
+      ? getTextFromDescendants(propertyIdNode, "MarketingName")
+      : "";
+    const address1 = propertyIdNode
+      ? getTextFromDescendants(propertyIdNode, "AddressLine1")
+      : "";
+    const city = propertyIdNode
+      ? getTextFromDescendants(propertyIdNode, "City")
+      : "";
+    const region = propertyIdNode
+      ? getTextFromDescendants(propertyIdNode, "State")
+      : "";
+    const postal = propertyIdNode
+      ? getTextFromDescendants(propertyIdNode, "PostalCode")
+      : "";
+    const website = propertyIdNode
+      ? getTextFromDescendants(propertyIdNode, "WebSite")
+      : "";
+    const email = propertyIdNode
+      ? getTextFromDescendants(propertyIdNode, "Email")
+      : "";
+    const description = infoNode
+      ? getTextFromDescendants(infoNode, "LongDescription")
+      : "";
 
-        unitNodes.forEach((unitNode) => {
-          const availabilityNode = getFirstChildByLocalName(unitNode, "Availability");
-          const vacateDateNode = availabilityNode
-            ? getFirstChildByLocalName(availabilityNode, "VacateDate")
-            : null;
+    unitNodes.forEach((unitNode) => {
+      const availabilityNode = getFirstChildByLocalName(unitNode, "Availability");
+      const vacateDateNode = availabilityNode
+        ? getFirstChildByLocalName(availabilityNode, "VacateDate")
+        : null;
 
-          let availableDate = "";
-          if (vacateDateNode) {
-            const year = vacateDateNode.getAttribute("Year") || "";
-            const month = (vacateDateNode.getAttribute("Month") || "").padStart(2, "0");
-            const day = (vacateDateNode.getAttribute("Day") || "").padStart(2, "0");
+      let availableDate = "";
+      if (vacateDateNode) {
+        const year = vacateDateNode.getAttribute("Year") || "";
+        const month = (vacateDateNode.getAttribute("Month") || "").padStart(2, "0");
+        const day = (vacateDateNode.getAttribute("Day") || "").padStart(2, "0");
 
-            if (year && month && day) {
-              availableDate = `${year}-${month}-${day}`;
-            }
-          }
+        if (year && month && day) {
+          availableDate = `${year}-${month}-${day}`;
+        }
+      }
 
-          const unitUrl = availabilityNode
-            ? getTextFromDescendants(availabilityNode, "UnitAvailabilityURL")
-            : "";
+      const unitUrl = availabilityNode
+        ? getTextFromDescendants(availabilityNode, "UnitAvailabilityURL")
+        : "";
 
-          let unitNumber = "";
-          if (unitUrl) {
-            const match = unitUrl.match(/unit-([^/?#]+)/i);
-            if (match) {
-              unitNumber = match[1];
-            }
-          }
+      const unitEl = getFirstChildByLocalName(
+        getFirstChildByLocalName(unitNode, "Units") || unitNode,
+        "Unit",
+      );
 
-          const photos = [...unitNode.getElementsByTagName("*")]
-            .filter((el) => el.localName === "Photo")
-            .map((el) => el.textContent?.trim() || "")
-            .filter(Boolean);
+      const unitNumber = unitEl
+        ? getTextFromDescendants(unitEl, "MarketingName")
+        : "";
 
-          const photo = photos[0] || "";
+      const files = getChildrenByLocalName(unitNode, "File");
 
-          mitsListings.push({
-            propertyName,
-            address1,
-            city,
-            region,
-            postal,
-            description,
-            website,
-            buildingType: "",
-            phone: "",
-            email,
+      const photos = files
+        .map((fileNode) => {
+          const fileType = getTextFromDescendants(fileNode, "FileType");
+          const src = getTextFromDescendants(fileNode, "Src");
+          return { fileType, src };
+        })
+        .filter((f) => f.src)
+        .sort((a, b) => {
+          const rankA = a.fileType === "Photo" ? 0 : 1;
+          const rankB = b.fileType === "Photo" ? 0 : 1;
+          return rankA - rankB;
+        })
+        .map((f) => f.src);
 
-            unitNumber,
-            unitType: "",
-            floorplanName: getTextFromDescendants(unitNode, "FloorplanName") || "",
-            beds: getTextFromDescendants(unitNode, "Bedrooms") || "",
-            baths: getTextFromDescendants(unitNode, "Bathrooms") || "",
-            sqft: getTextFromDescendants(unitNode, "SquareFeet") || "",
-            rent: getTextFromDescendants(unitNode, "MarketRent") || "",
-            available: "true",
-            availableDate,
-            occupancyStatus: "",
-            photo,
-            photos,
-            unitPageSlug: unitUrl,
-          });
-        });
+      const photo = photos[0] || "";
+
+      mitsListings.push({
+        propertyName,
+        address1,
+        city,
+        region,
+        postal,
+        description,
+        website,
+        buildingType: "",
+        phone: "",
+        email,
+
+        unitNumber,
+        unitType: unitEl ? getTextFromDescendants(unitEl, "UnitType") : "",
+        floorplanName: unitEl ? getTextFromDescendants(unitEl, "FloorplanName") : "",
+        beds: unitEl ? getTextFromDescendants(unitEl, "UnitBedrooms") : "",
+        baths: unitEl ? getTextFromDescendants(unitEl, "UnitBathrooms") : "",
+        sqft:
+          (unitEl ? getTextFromDescendants(unitEl, "MaxSquareFeet") : "") ||
+          (unitEl ? getTextFromDescendants(unitEl, "MinSquareFeet") : "") ||
+          "",
+        rent: unitEl ? getTextFromDescendants(unitEl, "MarketRent") : "",
+        available: "true",
+        availableDate,
+        occupancyStatus: unitEl
+          ? getTextFromDescendants(unitEl, "UnitOccupancyStatus")
+          : "",
+        photo,
+        photos,
+        unitPageSlug: unitUrl,
       });
+    });
+  });
 
-      return mitsListings;
-    }
+  return mitsListings;
+}
 
     return [];
   }, [xmlText]);
