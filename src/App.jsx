@@ -12,6 +12,8 @@ export default function XmlFeedViewerApp() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
+  const [selectedImages, setSelectedImages] = useState({});
+
   async function loadFeed() {
     setLoading(true);
     setError("");
@@ -144,6 +146,12 @@ export default function XmlFeedViewerApp() {
           occupancyStatus: unit
             ? getTextFromDescendants(unit, "OccupancyStatus")
             : "",
+          photos: unit
+            ? [...unit.getElementsByTagName("*")]
+                .filter((el) => el.localName === "Photo")
+                .map((el) => el.textContent?.trim() || "")
+                .filter(Boolean)
+            : [],
           photo: unit ? getTextFromDescendants(unit, "Photo") : "",
           unitPageSlug: unit
             ? getTextFromDescendants(unit, "UnitPageSlug")
@@ -230,10 +238,12 @@ export default function XmlFeedViewerApp() {
             }
           }
 
-          const photo =
-            [...unitNode.getElementsByTagName("*")]
-              .find((el) => el.localName === "Photo")
-              ?.textContent?.trim() || "";
+          const photos = [...unitNode.getElementsByTagName("*")]
+  .filter((el) => el.localName === "Photo")
+  .map((el) => el.textContent?.trim() || "")
+  .filter(Boolean);
+
+const photo = photos[0] || "";
 
           mitsListings.push({
             propertyName,
@@ -259,7 +269,8 @@ export default function XmlFeedViewerApp() {
             availableDate,
             occupancyStatus: "",
             photo,
-            unitPageSlug: unitUrl,
+photos,
+unitPageSlug: unitUrl,
           });
         });
       });
@@ -411,15 +422,36 @@ export default function XmlFeedViewerApp() {
                   className={`listing-card ${listing.photo ? "has-image" : "no-image"}`}
                   key={`${listing.propertyName}-${listing.unitNumber}-${index}`}
                 >
-                  {listing.photo ? (
-                    <div className="listing-image-wrap">
-                      <img
-                        src={listing.photo}
-                        alt={`${listing.propertyName} Unit ${listing.unitNumber}`}
-                        className="listing-image"
-                      />
-                    </div>
-                  ) : null}
+                  {listing.photo && (
+  <div className="listing-image-wrap">
+    <img
+      src={
+        selectedImages[`${listing.propertyName}-${listing.unitNumber}-${index}`] ||
+        listing.photo
+      }
+      alt={`${listing.propertyName} Unit ${listing.unitNumber}`}
+      className="listing-image"
+    />
+
+    {listing.photos?.length > 1 && (
+      <div className="listing-thumbs">
+        {listing.photos.map((img, imgIndex) => (
+          <img
+            key={imgIndex}
+            src={img}
+            className="listing-thumb"
+            onClick={() =>
+              setSelectedImages((prev) => ({
+                ...prev,
+                [`${listing.propertyName}-${listing.unitNumber}-${index}`]: img,
+              }))
+            }
+          />
+        ))}
+      </div>
+    )}
+  </div>
+)}
 
                   <div className="listing-content">
                     <h2>{listing.propertyName || "Unnamed Property"}</h2>
@@ -474,22 +506,22 @@ export default function XmlFeedViewerApp() {
                       {listing.email && <span>{listing.email}</span>}
                     </div>
 
-                   {(listing.unitPageSlug || listing.website) && (
-  <a
-    href={
-      listing.unitPageSlug
-        ? listing.unitPageSlug.startsWith("http")
-          ? listing.unitPageSlug
-          : `https://www.wallfinancialcorporation.com/units/${listing.unitPageSlug}`
-        : listing.website
-    }
-    target="_blank"
-    rel="noreferrer"
-    className="listing-button"
-  >
-    View Property
-  </a>
-)}
+                    {(listing.unitPageSlug || listing.website) && (
+                      <a
+                        href={
+                          listing.unitPageSlug
+                            ? listing.unitPageSlug.startsWith("http")
+                              ? listing.unitPageSlug
+                              : `https://www.wallfinancialcorporation.com/units/${listing.unitPageSlug}`
+                            : listing.website
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        className="listing-button"
+                      >
+                        View Property
+                      </a>
+                    )}
                   </div>
                 </div>
               ))}

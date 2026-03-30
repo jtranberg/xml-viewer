@@ -350,3 +350,20 @@ pre {
   margin-top: 10px;
   color: #fbbf24;
 }
+
+.listing-thumbs {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  background: #020617;
+  overflow-x: auto;
+}
+
+.listing-thumb {
+  width: 60px;
+  height: 45px;
+  object-fit: cover;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid #334155;
+}
