@@ -142,6 +142,7 @@ export default function XmlFeedViewerApp() {
           availableDate: unit ? getTextFromDescendants(unit, "AvailableDate") : "",
           occupancyStatus: unit ? getTextFromDescendants(unit, "OccupancyStatus") : "",
           photos,
+          floorplans: [],
           photo,
           unitPageSlug: unit ? getTextFromDescendants(unit, "UnitPageSlug") : "",
         };
@@ -149,131 +150,135 @@ export default function XmlFeedViewerApp() {
     }
 
     const physicalProperties = allNodes.filter(
-  (el) => el.localName === "PhysicalProperty",
-);
+      (el) => el.localName === "PhysicalProperty",
+    );
 
-if (physicalProperties.length > 0) {
-  const mitsListings = [];
+    if (physicalProperties.length > 0) {
+      const mitsListings = [];
 
-  physicalProperties.forEach((physicalProperty) => {
-    const property = getFirstChildByLocalName(physicalProperty, "Property");
-    if (!property) return;
+      physicalProperties.forEach((physicalProperty) => {
+        const property = getFirstChildByLocalName(physicalProperty, "Property");
+        if (!property) return;
 
-    const propertyIdNode = getFirstChildByLocalName(property, "PropertyID");
-    const infoNode = getFirstChildByLocalName(property, "Information");
-    const unitNodes = getChildrenByLocalName(property, "ILS_Unit");
+        const propertyIdNode = getFirstChildByLocalName(property, "PropertyID");
+        const infoNode = getFirstChildByLocalName(property, "Information");
+        const unitNodes = getChildrenByLocalName(property, "ILS_Unit");
 
-    const propertyName = propertyIdNode
-      ? getTextFromDescendants(propertyIdNode, "MarketingName")
-      : "";
-    const address1 = propertyIdNode
-      ? getTextFromDescendants(propertyIdNode, "AddressLine1")
-      : "";
-    const city = propertyIdNode
-      ? getTextFromDescendants(propertyIdNode, "City")
-      : "";
-    const region = propertyIdNode
-      ? getTextFromDescendants(propertyIdNode, "State")
-      : "";
-    const postal = propertyIdNode
-      ? getTextFromDescendants(propertyIdNode, "PostalCode")
-      : "";
-    const website = propertyIdNode
-      ? getTextFromDescendants(propertyIdNode, "WebSite")
-      : "";
-    const email = propertyIdNode
-      ? getTextFromDescendants(propertyIdNode, "Email")
-      : "";
-    const description = infoNode
-      ? getTextFromDescendants(infoNode, "LongDescription")
-      : "";
+        const propertyName = propertyIdNode
+          ? getTextFromDescendants(propertyIdNode, "MarketingName")
+          : "";
+        const address1 = propertyIdNode
+          ? getTextFromDescendants(propertyIdNode, "AddressLine1")
+          : "";
+        const city = propertyIdNode
+          ? getTextFromDescendants(propertyIdNode, "City")
+          : "";
+        const region = propertyIdNode
+          ? getTextFromDescendants(propertyIdNode, "State")
+          : "";
+        const postal = propertyIdNode
+          ? getTextFromDescendants(propertyIdNode, "PostalCode")
+          : "";
+        const website = propertyIdNode
+          ? getTextFromDescendants(propertyIdNode, "WebSite")
+          : "";
+        const email = propertyIdNode
+          ? getTextFromDescendants(propertyIdNode, "Email")
+          : "";
+        const description = infoNode
+          ? getTextFromDescendants(infoNode, "LongDescription")
+          : "";
 
-    unitNodes.forEach((unitNode) => {
-      const availabilityNode = getFirstChildByLocalName(unitNode, "Availability");
-      const vacateDateNode = availabilityNode
-        ? getFirstChildByLocalName(availabilityNode, "VacateDate")
-        : null;
+        unitNodes.forEach((unitNode) => {
+          const availabilityNode = getFirstChildByLocalName(unitNode, "Availability");
+          const vacateDateNode = availabilityNode
+            ? getFirstChildByLocalName(availabilityNode, "VacateDate")
+            : null;
 
-      let availableDate = "";
-      if (vacateDateNode) {
-        const year = vacateDateNode.getAttribute("Year") || "";
-        const month = (vacateDateNode.getAttribute("Month") || "").padStart(2, "0");
-        const day = (vacateDateNode.getAttribute("Day") || "").padStart(2, "0");
+          let availableDate = "";
+          if (vacateDateNode) {
+            const year = vacateDateNode.getAttribute("Year") || "";
+            const month = (vacateDateNode.getAttribute("Month") || "").padStart(2, "0");
+            const day = (vacateDateNode.getAttribute("Day") || "").padStart(2, "0");
 
-        if (year && month && day) {
-          availableDate = `${year}-${month}-${day}`;
-        }
-      }
+            if (year && month && day) {
+              availableDate = `${year}-${month}-${day}`;
+            }
+          }
 
-      const unitUrl = availabilityNode
-        ? getTextFromDescendants(availabilityNode, "UnitAvailabilityURL")
-        : "";
+          const unitUrl = availabilityNode
+            ? getTextFromDescendants(availabilityNode, "UnitAvailabilityURL")
+            : "";
 
-      const unitEl = getFirstChildByLocalName(
-        getFirstChildByLocalName(unitNode, "Units") || unitNode,
-        "Unit",
-      );
+          const unitEl = getFirstChildByLocalName(
+            getFirstChildByLocalName(unitNode, "Units") || unitNode,
+            "Unit",
+          );
 
-      const unitNumber = unitEl
-        ? getTextFromDescendants(unitEl, "MarketingName")
-        : "";
+          const unitNumber = unitEl
+            ? getTextFromDescendants(unitEl, "MarketingName")
+            : "";
 
-      const files = [...unitNode.getElementsByTagName("*")]
-  .filter((el) => el.localName === "File");
+          const files = [...unitNode.getElementsByTagName("*")]
+            .filter((el) => el.localName === "File")
+            .map((fileNode) => {
+              const fileType = getTextFromDescendants(fileNode, "FileType");
+              const src = getTextFromDescendants(fileNode, "Src");
+              const rank = Number(getTextFromDescendants(fileNode, "Rank") || "999");
+              return { fileType, src, rank };
+            })
+            .filter((f) => f.src);
 
-const photos = files
-  .map((fileNode) => {
-    const fileType = getTextFromDescendants(fileNode, "FileType");
-    const src = getTextFromDescendants(fileNode, "Src");
-    const rank = Number(getTextFromDescendants(fileNode, "Rank") || "999");
-    return { fileType, src, rank };
-  })
-  .filter((f) => f.src)
-  .sort((a, b) => {
-    const typeRankA = a.fileType === "Photo" ? 0 : 1;
-    const typeRankB = b.fileType === "Photo" ? 0 : 1;
-    if (typeRankA !== typeRankB) return typeRankA - typeRankB;
-    return a.rank - b.rank;
-  })
-  .map((f) => f.src);
+          const photos = files
+            .filter((f) => f.fileType === "Photo")
+            .sort((a, b) => a.rank - b.rank)
+            .map((f) => f.src);
 
-const photo = photos[0] || "";
-      mitsListings.push({
-        propertyName,
-        address1,
-        city,
-        region,
-        postal,
-        description,
-        website,
-        buildingType: "",
-        phone: "",
-        email,
+          const floorplans = files
+            .filter((f) => f.fileType === "Floorplan")
+            .sort((a, b) => a.rank - b.rank)
+            .map((f) => f.src);
 
-        unitNumber,
-        unitType: unitEl ? getTextFromDescendants(unitEl, "UnitType") : "",
-        floorplanName: unitEl ? getTextFromDescendants(unitEl, "FloorplanName") : "",
-        beds: unitEl ? getTextFromDescendants(unitEl, "UnitBedrooms") : "",
-        baths: unitEl ? getTextFromDescendants(unitEl, "UnitBathrooms") : "",
-        sqft:
-          (unitEl ? getTextFromDescendants(unitEl, "MaxSquareFeet") : "") ||
-          (unitEl ? getTextFromDescendants(unitEl, "MinSquareFeet") : "") ||
-          "",
-        rent: unitEl ? getTextFromDescendants(unitEl, "MarketRent") : "",
-        available: "true",
-        availableDate,
-        occupancyStatus: unitEl
-          ? getTextFromDescendants(unitEl, "UnitOccupancyStatus")
-          : "",
-        photo,
-        photos,
-        unitPageSlug: unitUrl,
+          const allImages = [...photos, ...floorplans];
+          const photo = photos[0] || floorplans[0] || "";
+
+          mitsListings.push({
+            propertyName,
+            address1,
+            city,
+            region,
+            postal,
+            description,
+            website,
+            buildingType: "",
+            phone: "",
+            email,
+
+            unitNumber,
+            unitType: unitEl ? getTextFromDescendants(unitEl, "UnitType") : "",
+            floorplanName: unitEl ? getTextFromDescendants(unitEl, "FloorplanName") : "",
+            beds: unitEl ? getTextFromDescendants(unitEl, "UnitBedrooms") : "",
+            baths: unitEl ? getTextFromDescendants(unitEl, "UnitBathrooms") : "",
+            sqft:
+              (unitEl ? getTextFromDescendants(unitEl, "MaxSquareFeet") : "") ||
+              (unitEl ? getTextFromDescendants(unitEl, "MinSquareFeet") : "") ||
+              "",
+            rent: unitEl ? getTextFromDescendants(unitEl, "MarketRent") : "",
+            available: "true",
+            availableDate,
+            occupancyStatus: unitEl
+              ? getTextFromDescendants(unitEl, "UnitOccupancyStatus")
+              : "",
+            photos: allImages,
+            floorplans,
+            photo,
+            unitPageSlug: unitUrl,
+          });
+        });
       });
-    });
-  });
 
-  return mitsListings;
-}
+      return mitsListings;
+    }
 
     return [];
   }, [xmlText]);
@@ -411,39 +416,71 @@ const photo = photos[0] || "";
               {listings.map((listing, index) => {
                 const imageKey = `${listing.propertyName}-${listing.unitNumber}-${index}`;
                 const currentImage =
-  selectedImages[imageKey] || listing.photo || listing.photos?.[0] || "";
+                  selectedImages[imageKey] ||
+                  listing.photo ||
+                  listing.photos?.[0] ||
+                  listing.floorplans?.[0] ||
+                  "";
 
                 return (
                   <div
-                    className={`listing-card ${(listing.photo || listing.photos?.length) ? "has-image" : "no-image"}`}
+                    className={`listing-card ${(listing.photo || listing.photos?.length || listing.floorplans?.length) ? "has-image" : "no-image"}`}
                     key={imageKey}
                   >
-                    {(listing.photo || listing.photos?.length) && (
+                    {(listing.photo || listing.photos?.length || listing.floorplans?.length) && (
                       <div className="listing-media">
-                        <div className="listing-image-wrap">
-                          <img
-                            src={currentImage}
-                            alt={`${listing.propertyName} Unit ${listing.unitNumber}`}
-                            className="listing-image"
-                          />
-                        </div>
+                        {(listing.photo || listing.photos?.length) && (
+                          <>
+                            <div className="media-label">Photos</div>
 
-                        {listing.photos?.length > 1 && (
-                          <div className="listing-thumbs">
-                            {listing.photos.map((img, imgIndex) => (
+                            <div className="listing-image-wrap">
                               <img
-                                key={imgIndex}
-                                src={img}
-                                alt={`${listing.propertyName} thumbnail ${imgIndex + 1}`}
-                                className={`listing-thumb ${currentImage === img ? "active" : ""}`}
-                                onClick={() =>
-                                  setSelectedImages((prev) => ({
-                                    ...prev,
-                                    [imageKey]: img,
-                                  }))
-                                }
+                                src={currentImage}
+                                alt={`${listing.propertyName} Unit ${listing.unitNumber}`}
+                                className="listing-image"
                               />
-                            ))}
+                            </div>
+
+                            {listing.photos?.length > 1 && (
+                              <div className="listing-thumbs">
+                                {listing.photos.map((img, imgIndex) => (
+                                  <img
+                                    key={imgIndex}
+                                    src={img}
+                                    alt={`${listing.propertyName} thumbnail ${imgIndex + 1}`}
+                                    className={`listing-thumb ${currentImage === img ? "active" : ""}`}
+                                    onClick={() =>
+                                      setSelectedImages((prev) => ({
+                                        ...prev,
+                                        [imageKey]: img,
+                                      }))
+                                    }
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        )}
+
+                        {listing.floorplans?.length > 0 && (
+                          <div className="floorplan-section">
+                            <div className="media-label">Floorplans</div>
+                            <div className="listing-thumbs">
+                              {listing.floorplans.map((img, imgIndex) => (
+                                <img
+                                  key={`fp-${imgIndex}`}
+                                  src={img}
+                                  alt={`${listing.propertyName} floorplan ${imgIndex + 1}`}
+                                  className="listing-thumb floorplan-thumb"
+                                  onClick={() =>
+                                    setSelectedImages((prev) => ({
+                                      ...prev,
+                                      [imageKey]: img,
+                                    }))
+                                  }
+                                />
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
