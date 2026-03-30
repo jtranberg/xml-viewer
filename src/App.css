@@ -152,8 +152,6 @@ pre {
   background: #111827;
 }
 
-/* Listing preview */
-
 .listing-grid {
   display: flex;
   flex-direction: column;
@@ -177,6 +175,13 @@ pre {
   display: block;
 }
 
+.listing-media {
+  display: flex;
+  flex-direction: column;
+  background: #020617;
+  min-width: 0;
+}
+
 .listing-image-wrap {
   background: #020617;
   width: 100%;
@@ -189,25 +194,6 @@ pre {
   height: 100%;
   object-fit: cover;
   display: block;
-}
-
-/* optional if some images feel too zoomed in */
-/*
-.listing-image {
-  object-fit: contain;
-  background: #020617;
-}
-*/
-
-.listing-image-placeholder {
-  width: 100%;
-  height: 100%;
-  min-height: 220px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #94a3b8;
-  font-weight: 600;
 }
 
 .listing-content {
@@ -282,24 +268,6 @@ pre {
 .listing-button:hover {
   opacity: 0.92;
 }
-.listing-media {
-  display: flex;
-  flex-direction: column;
-  background: #020617;
-}
-
-.listing-image-wrap {
-  width: 100%;
-  height: 220px;
-  overflow: hidden;
-}
-
-.listing-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
 
 .listing-thumbs {
   display: flex;
@@ -319,49 +287,9 @@ pre {
   flex: 0 0 auto;
 }
 
-@media (max-width: 900px) {
-  .listing-card {
-    grid-template-columns: 1fr;
-  }
-
-  .listing-image-wrap {
-    height: 200px;
-  }
-}
-
-@media (max-width: 600px) {
-  .app {
-    padding: 14px;
-  }
-
-  .card {
-    padding: 16px;
-  }
-
-  .listing-image-wrap {
-    height: 180px;
-  }
-
-  .listing-content {
-    padding: 16px;
-  }
-
-  .listing-rent {
-    font-size: 24px;
-  }
-}
-
-.row input[type="password"] {
-  min-width: 220px;
-}
-@media (max-width: 700px) {
-  .row {
-    flex-direction: column;
-  }
-
-  input {
-    min-width: 100%;
-  }
+.listing-thumb.active {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 1px #38bdf8;
 }
 
 .proxy-row {
@@ -387,19 +315,48 @@ pre {
   color: #fbbf24;
 }
 
-.listing-thumbs {
-  display: flex;
-  gap: 6px;
-  padding: 8px;
-  background: #020617;
-  overflow-x: auto;
+.row input[type="password"] {
+  min-width: 220px;
 }
 
-.listing-thumb {
-  width: 60px;
-  height: 45px;
-  object-fit: cover;
-  border-radius: 6px;
-  cursor: pointer;
-  border: 1px solid #334155;
+@media (max-width: 900px) {
+  .listing-card.has-image {
+    grid-template-columns: 1fr;
+  }
+
+  .listing-image-wrap {
+    height: 200px;
+  }
+}
+
+@media (max-width: 700px) {
+  .row {
+    flex-direction: column;
+  }
+
+  input {
+    min-width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .app {
+    padding: 14px;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .listing-image-wrap {
+    height: 180px;
+  }
+
+  .listing-content {
+    padding: 16px;
+  }
+
+  .listing-rent {
+    font-size: 24px;
+  }
 }

@@ -107,31 +107,30 @@ export default function XmlFeedViewerApp() {
         const property = getFirstChildByLocalName(item, "Property");
         const unit = getFirstChildByLocalName(item, "Unit");
 
+        const photos = unit
+          ? [...unit.getElementsByTagName("*")]
+              .filter((el) => el.localName === "Photo")
+              .map((el) => el.textContent?.trim() || "")
+              .filter(Boolean)
+          : [];
+
+        const photo = photos[0] || "";
+
         return {
-          propertyName: property
-            ? getTextFromDescendants(property, "Name")
-            : "",
-          address1: property
-            ? getTextFromDescendants(property, "Address1")
-            : "",
+          propertyName: property ? getTextFromDescendants(property, "Name") : "",
+          address1: property ? getTextFromDescendants(property, "Address1") : "",
           city: property ? getTextFromDescendants(property, "City") : "",
           region: property ? getTextFromDescendants(property, "Region") : "",
           postal: property ? getTextFromDescendants(property, "Postal") : "",
-          description: property
-            ? getTextFromDescendants(property, "Description")
-            : "",
+          description: property ? getTextFromDescendants(property, "Description") : "",
           website: property ? getTextFromDescendants(property, "Website") : "",
-          buildingType: property
-            ? getTextFromDescendants(property, "BuildingType")
-            : "",
+          buildingType: property ? getTextFromDescendants(property, "BuildingType") : "",
           phone: property ? getTextFromDescendants(property, "Phone") : "",
           email: property ? getTextFromDescendants(property, "Email") : "",
 
           unitNumber: unit ? getTextFromDescendants(unit, "UnitNumber") : "",
           unitType: unit ? getTextFromDescendants(unit, "UnitType") : "",
-          floorplanName: unit
-            ? getTextFromDescendants(unit, "FloorplanName")
-            : "",
+          floorplanName: unit ? getTextFromDescendants(unit, "FloorplanName") : "",
           beds: unit ? getTextFromDescendants(unit, "Bedrooms") : "",
           baths: unit ? getTextFromDescendants(unit, "Bathrooms") : "",
           sqft:
@@ -140,22 +139,11 @@ export default function XmlFeedViewerApp() {
             "",
           rent: unit ? getTextFromDescendants(unit, "Rent") : "",
           available: unit ? getTextFromDescendants(unit, "IsAvailable") : "",
-          availableDate: unit
-            ? getTextFromDescendants(unit, "AvailableDate")
-            : "",
-          occupancyStatus: unit
-            ? getTextFromDescendants(unit, "OccupancyStatus")
-            : "",
-          photos: unit
-            ? [...unit.getElementsByTagName("*")]
-                .filter((el) => el.localName === "Photo")
-                .map((el) => el.textContent?.trim() || "")
-                .filter(Boolean)
-            : [],
-          photo: unit ? getTextFromDescendants(unit, "Photo") : "",
-          unitPageSlug: unit
-            ? getTextFromDescendants(unit, "UnitPageSlug")
-            : "",
+          availableDate: unit ? getTextFromDescendants(unit, "AvailableDate") : "",
+          occupancyStatus: unit ? getTextFromDescendants(unit, "OccupancyStatus") : "",
+          photos,
+          photo,
+          unitPageSlug: unit ? getTextFromDescendants(unit, "UnitPageSlug") : "",
         };
       });
     }
@@ -201,10 +189,7 @@ export default function XmlFeedViewerApp() {
           : "";
 
         unitNodes.forEach((unitNode) => {
-          const availabilityNode = getFirstChildByLocalName(
-            unitNode,
-            "Availability",
-          );
+          const availabilityNode = getFirstChildByLocalName(unitNode, "Availability");
           const vacateDateNode = availabilityNode
             ? getFirstChildByLocalName(availabilityNode, "VacateDate")
             : null;
@@ -212,14 +197,8 @@ export default function XmlFeedViewerApp() {
           let availableDate = "";
           if (vacateDateNode) {
             const year = vacateDateNode.getAttribute("Year") || "";
-            const month = (vacateDateNode.getAttribute("Month") || "").padStart(
-              2,
-              "0",
-            );
-            const day = (vacateDateNode.getAttribute("Day") || "").padStart(
-              2,
-              "0",
-            );
+            const month = (vacateDateNode.getAttribute("Month") || "").padStart(2, "0");
+            const day = (vacateDateNode.getAttribute("Day") || "").padStart(2, "0");
 
             if (year && month && day) {
               availableDate = `${year}-${month}-${day}`;
@@ -259,8 +238,7 @@ export default function XmlFeedViewerApp() {
 
             unitNumber,
             unitType: "",
-            floorplanName:
-              getTextFromDescendants(unitNode, "FloorplanName") || "",
+            floorplanName: getTextFromDescendants(unitNode, "FloorplanName") || "",
             beds: getTextFromDescendants(unitNode, "Bedrooms") || "",
             baths: getTextFromDescendants(unitNode, "Bathrooms") || "",
             sqft: getTextFromDescendants(unitNode, "SquareFeet") || "",
@@ -304,21 +282,15 @@ export default function XmlFeedViewerApp() {
 
     const allNodes = [...doc.getElementsByTagName("*")];
 
-    const livProperties = allNodes.filter(
-      (el) => el.localName === "Property",
-    ).length;
+    const livProperties = allNodes.filter((el) => el.localName === "Property").length;
     const livUnits = allNodes.filter((el) => el.localName === "Unit").length;
-    const livFloorplans = allNodes.filter(
-      (el) => el.localName === "Floorplan",
-    ).length;
+    const livFloorplans = allNodes.filter((el) => el.localName === "Floorplan").length;
 
     const mitsPhysicalProperties = allNodes.filter(
       (el) => el.localName === "PhysicalProperty",
     ).length;
 
-    const mitsUnits = allNodes.filter(
-      (el) => el.localName === "ILS_Unit",
-    ).length;
+    const mitsUnits = allNodes.filter((el) => el.localName === "ILS_Unit").length;
 
     return {
       properties: mitsPhysicalProperties || livProperties,
@@ -417,116 +389,104 @@ export default function XmlFeedViewerApp() {
             <p>No data loaded</p>
           ) : (
             <div className="listing-grid">
-              {listings.map((listing, index) => (
-                <div
-                  className={`listing-card ${listing.photo ? "has-image" : "no-image"}`}
-                  key={`${listing.propertyName}-${listing.unitNumber}-${index}`}
-                >
-                  {listing.photo && (
-                    <div className="listing-image-wrap">
-                      <img
-                        src={
-                          selectedImages[
-                            `${listing.propertyName}-${listing.unitNumber}-${index}`
-                          ] || listing.photo
-                        }
-                        alt={`${listing.propertyName} Unit ${listing.unitNumber}`}
-                        className="listing-image"
-                      />
+              {listings.map((listing, index) => {
+                const imageKey = `${listing.propertyName}-${listing.unitNumber}-${index}`;
+                const currentImage = selectedImages[imageKey] || listing.photo;
 
-                      {listing.photos?.length > 1 && (
-                        <div className="listing-thumbs">
-                          {listing.photos.map((img, imgIndex) => (
-                            <img
-                              key={imgIndex}
-                              src={img}
-                              className="listing-thumb"
-                              onClick={() =>
-                                setSelectedImages((prev) => ({
-                                  ...prev,
-                                  [`${listing.propertyName}-${listing.unitNumber}-${index}`]:
-                                    img,
-                                }))
-                              }
-                            />
-                          ))}
+                return (
+                  <div
+                    className={`listing-card ${listing.photo ? "has-image" : "no-image"}`}
+                    key={imageKey}
+                  >
+                    {listing.photo && (
+                      <div className="listing-media">
+                        <div className="listing-image-wrap">
+                          <img
+                            src={currentImage}
+                            alt={`${listing.propertyName} Unit ${listing.unitNumber}`}
+                            className="listing-image"
+                          />
                         </div>
-                      )}
-                    </div>
-                  )}
 
-                  <div className="listing-content">
-                    <h2>{listing.propertyName || "Unnamed Property"}</h2>
-
-                    <p className="address">
-                      {[
-                        listing.address1,
-                        listing.city,
-                        listing.region,
-                        listing.postal,
-                      ]
-                        .filter(Boolean)
-                        .join(", ")}
-                    </p>
-
-                    <div className="listing-meta">
-                      {listing.unitNumber && (
-                        <span>Unit {listing.unitNumber}</span>
-                      )}
-                      {listing.beds && <span>{listing.beds} Beds</span>}
-                      {listing.baths && <span>{listing.baths} Baths</span>}
-                      {listing.sqft && <span>{listing.sqft} SF</span>}
-                      {listing.buildingType && (
-                        <span>{listing.buildingType}</span>
-                      )}
-                    </div>
-
-                    <div className="listing-rent">
-                      {listing.rent
-                        ? `$${listing.rent}/month`
-                        : "No rent listed"}
-                    </div>
-
-                    <div className="listing-availability">
-                      Available: {listing.availableDate || "N/A"}
-                    </div>
-
-                    {listing.floorplanName && (
-                      <div className="listing-floorplan">
-                        {listing.floorplanName}
+                        {listing.photos?.length > 1 && (
+                          <div className="listing-thumbs">
+                            {listing.photos.map((img, imgIndex) => (
+                              <img
+                                key={imgIndex}
+                                src={img}
+                                alt={`${listing.propertyName} thumbnail ${imgIndex + 1}`}
+                                className={`listing-thumb ${currentImage === img ? "active" : ""}`}
+                                onClick={() =>
+                                  setSelectedImages((prev) => ({
+                                    ...prev,
+                                    [imageKey]: img,
+                                  }))
+                                }
+                              />
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
 
-                    {listing.description && (
-                      <p className="listing-description">
-                        {listing.description}
+                    <div className="listing-content">
+                      <h2>{listing.propertyName || "Unnamed Property"}</h2>
+
+                      <p className="address">
+                        {[listing.address1, listing.city, listing.region, listing.postal]
+                          .filter(Boolean)
+                          .join(", ")}
                       </p>
-                    )}
 
-                    <div className="listing-contact">
-                      {listing.phone && <span>{listing.phone}</span>}
-                      {listing.email && <span>{listing.email}</span>}
+                      <div className="listing-meta">
+                        {listing.unitNumber && <span>Unit {listing.unitNumber}</span>}
+                        {listing.beds && <span>{listing.beds} Beds</span>}
+                        {listing.baths && <span>{listing.baths} Baths</span>}
+                        {listing.sqft && <span>{listing.sqft} SF</span>}
+                        {listing.buildingType && <span>{listing.buildingType}</span>}
+                      </div>
+
+                      <div className="listing-rent">
+                        {listing.rent ? `$${listing.rent}/month` : "No rent listed"}
+                      </div>
+
+                      <div className="listing-availability">
+                        Available: {listing.availableDate || "N/A"}
+                      </div>
+
+                      {listing.floorplanName && (
+                        <div className="listing-floorplan">{listing.floorplanName}</div>
+                      )}
+
+                      {listing.description && (
+                        <p className="listing-description">{listing.description}</p>
+                      )}
+
+                      <div className="listing-contact">
+                        {listing.phone && <span>{listing.phone}</span>}
+                        {listing.email && <span>{listing.email}</span>}
+                      </div>
+
+                      {(listing.unitPageSlug || listing.website) && (
+                        <a
+                          href={
+                            listing.unitPageSlug
+                              ? listing.unitPageSlug.startsWith("http")
+                                ? listing.unitPageSlug
+                                : `https://www.wallfinancialcorporation.com/units/${listing.unitPageSlug}`
+                              : listing.website
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="listing-button"
+                        >
+                          View Property
+                        </a>
+                      )}
                     </div>
-
-                    {(listing.unitPageSlug || listing.website) && (
-                      <a
-                        href={
-                          listing.unitPageSlug
-                            ? listing.unitPageSlug.startsWith("http")
-                              ? listing.unitPageSlug
-                              : `https://www.wallfinancialcorporation.com/units/${listing.unitPageSlug}`
-                            : listing.website
-                        }
-                        target="_blank"
-                        rel="noreferrer"
-                        className="listing-button"
-                      >
-                        View Property
-                      </a>
-                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -554,9 +514,7 @@ export default function XmlFeedViewerApp() {
 
               <tbody>
                 {listings.map((listing, index) => (
-                  <tr
-                    key={`${listing.propertyName}-${listing.unitNumber}-${index}`}
-                  >
+                  <tr key={`${listing.propertyName}-${listing.unitNumber}-${index}`}>
                     <td>{listing.propertyName}</td>
                     <td>{listing.city}</td>
                     <td>{listing.unitNumber}</td>
@@ -576,9 +534,7 @@ export default function XmlFeedViewerApp() {
         <div className="card">
           <div className="card-header">
             <h2>Raw XML</h2>
-            <span>
-              {xmlText ? `${xmlText.length} chars` : "No feed loaded"}
-            </span>
+            <span>{xmlText ? `${xmlText.length} chars` : "No feed loaded"}</span>
           </div>
 
           <div className="xml-box">
