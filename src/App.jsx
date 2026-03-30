@@ -83,44 +83,160 @@ export default function XmlFeedViewerApp() {
     const parserError = doc.querySelector("parsererror");
     if (parserError) return [];
 
-    const items = [...doc.querySelectorAll("Listing")];
+    const allNodes = [...doc.getElementsByTagName("*")];
 
-    return items.map((item) => {
-      const property = item.querySelector("Property");
-      const unit = item.querySelector("Unit");
+    const getChildrenByLocalName = (node, name) =>
+      [...node.children].filter((child) => child.localName === name);
 
-      return {
-        propertyName: property?.querySelector("Name")?.textContent || "",
-        address1: property?.querySelector("Address1")?.textContent || "",
-        city: property?.querySelector("City")?.textContent || "",
-        region: property?.querySelector("Region")?.textContent || "",
-        postal: property?.querySelector("Postal")?.textContent || "",
-        description: property?.querySelector("Description")?.textContent || "",
-        website: property?.querySelector("Website")?.textContent || "",
-        buildingType: property?.querySelector("BuildingType")?.textContent || "",
-        phone: property?.querySelector("Phone")?.textContent || "",
-        email: property?.querySelector("Email")?.textContent || "",
+    const getFirstChildByLocalName = (node, name) =>
+      [...node.children].find((child) => child.localName === name) || null;
 
-        unitNumber: unit?.querySelector("UnitNumber")?.textContent || "",
-        unitType: unit?.querySelector("UnitType")?.textContent || "",
-        floorplanName: unit?.querySelector("FloorplanName")?.textContent || "",
-        beds: unit?.querySelector("Bedrooms")?.textContent || "",
-        baths: unit?.querySelector("Bathrooms")?.textContent || "",
-        sqft:
-          unit?.querySelector("SquareFootage > Max")?.textContent ||
-          unit?.querySelector("SquareFootage > Min")?.textContent ||
-          "",
-        rent: unit?.querySelector("Pricing > Rent")?.textContent || "",
-        available:
-          unit?.querySelector("Availability > IsAvailable")?.textContent || "",
-        availableDate:
-          unit?.querySelector("Availability > AvailableDate")?.textContent || "",
-        occupancyStatus:
-          unit?.querySelector("Availability > OccupancyStatus")?.textContent || "",
-        photo: unit?.querySelector("Media > Photos > Photo")?.textContent || "",
-        unitPageSlug: unit?.querySelector("UnitPageSlug")?.textContent || "",
-      };
-    });
+    const getTextFromDescendants = (node, name) => {
+      const found = [...node.getElementsByTagName("*")].find(
+        (el) => el.localName === name
+      );
+      return found?.textContent?.trim() || "";
+    };
+
+    const livListings = allNodes.filter((el) => el.localName === "Listing");
+
+    if (livListings.length > 0) {
+      return livListings.map((item) => {
+        const property = getFirstChildByLocalName(item, "Property");
+        const unit = getFirstChildByLocalName(item, "Unit");
+
+        return {
+          propertyName: property ? getTextFromDescendants(property, "Name") : "",
+          address1: property ? getTextFromDescendants(property, "Address1") : "",
+          city: property ? getTextFromDescendants(property, "City") : "",
+          region: property ? getTextFromDescendants(property, "Region") : "",
+          postal: property ? getTextFromDescendants(property, "Postal") : "",
+          description: property ? getTextFromDescendants(property, "Description") : "",
+          website: property ? getTextFromDescendants(property, "Website") : "",
+          buildingType: property ? getTextFromDescendants(property, "BuildingType") : "",
+          phone: property ? getTextFromDescendants(property, "Phone") : "",
+          email: property ? getTextFromDescendants(property, "Email") : "",
+
+          unitNumber: unit ? getTextFromDescendants(unit, "UnitNumber") : "",
+          unitType: unit ? getTextFromDescendants(unit, "UnitType") : "",
+          floorplanName: unit ? getTextFromDescendants(unit, "FloorplanName") : "",
+          beds: unit ? getTextFromDescendants(unit, "Bedrooms") : "",
+          baths: unit ? getTextFromDescendants(unit, "Bathrooms") : "",
+          sqft:
+            (unit && getTextFromDescendants(unit, "Max")) ||
+            (unit && getTextFromDescendants(unit, "Min")) ||
+            "",
+          rent: unit ? getTextFromDescendants(unit, "Rent") : "",
+          available: unit ? getTextFromDescendants(unit, "IsAvailable") : "",
+          availableDate: unit ? getTextFromDescendants(unit, "AvailableDate") : "",
+          occupancyStatus: unit ? getTextFromDescendants(unit, "OccupancyStatus") : "",
+          photo: unit ? getTextFromDescendants(unit, "Photo") : "",
+          unitPageSlug: unit ? getTextFromDescendants(unit, "UnitPageSlug") : "",
+        };
+      });
+    }
+
+    const physicalProperties = allNodes.filter(
+      (el) => el.localName === "PhysicalProperty"
+    );
+
+    if (physicalProperties.length > 0) {
+      const mitsListings = [];
+
+      physicalProperties.forEach((physicalProperty) => {
+        const property = getFirstChildByLocalName(physicalProperty, "Property");
+        if (!property) return;
+
+        const propertyIdNode = getFirstChildByLocalName(property, "PropertyID");
+        const infoNode = getFirstChildByLocalName(property, "Information");
+        const unitNodes = getChildrenByLocalName(property, "ILS_Unit");
+
+        const propertyName = propertyIdNode
+          ? getTextFromDescendants(propertyIdNode, "MarketingName")
+          : "";
+        const address1 = propertyIdNode
+          ? getTextFromDescendants(propertyIdNode, "AddressLine1")
+          : "";
+        const city = propertyIdNode
+          ? getTextFromDescendants(propertyIdNode, "City")
+          : "";
+        const region = propertyIdNode
+          ? getTextFromDescendants(propertyIdNode, "State")
+          : "";
+        const postal = propertyIdNode
+          ? getTextFromDescendants(propertyIdNode, "PostalCode")
+          : "";
+        const website = propertyIdNode
+          ? getTextFromDescendants(propertyIdNode, "WebSite")
+          : "";
+        const email = propertyIdNode
+          ? getTextFromDescendants(propertyIdNode, "Email")
+          : "";
+        const description = infoNode
+          ? getTextFromDescendants(infoNode, "LongDescription")
+          : "";
+
+        unitNodes.forEach((unitNode) => {
+          const availabilityNode = getFirstChildByLocalName(unitNode, "Availability");
+          const vacateDateNode = availabilityNode
+            ? getFirstChildByLocalName(availabilityNode, "VacateDate")
+            : null;
+
+          let availableDate = "";
+          if (vacateDateNode) {
+            const year = vacateDateNode.getAttribute("Year") || "";
+            const month = (vacateDateNode.getAttribute("Month") || "").padStart(2, "0");
+            const day = (vacateDateNode.getAttribute("Day") || "").padStart(2, "0");
+
+            if (year && month && day) {
+              availableDate = `${year}-${month}-${day}`;
+            }
+          }
+
+          const unitUrl = availabilityNode
+            ? getTextFromDescendants(availabilityNode, "UnitAvailabilityURL")
+            : "";
+
+          let unitNumber = "";
+          if (unitUrl) {
+            const match = unitUrl.match(/unit-([^/?#]+)/i);
+            if (match) {
+              unitNumber = match[1];
+            }
+          }
+
+          mitsListings.push({
+            propertyName,
+            address1,
+            city,
+            region,
+            postal,
+            description,
+            website,
+            buildingType: "",
+            phone: "",
+            email,
+
+            unitNumber,
+            unitType: "",
+            floorplanName: "",
+            beds: "",
+            baths: "",
+            sqft: "",
+            rent: "",
+            available: "true",
+            availableDate,
+            occupancyStatus: "",
+            photo: "",
+            unitPageSlug: unitUrl,
+          });
+        });
+      });
+
+      return mitsListings;
+    }
+
+    return [];
   }, [xmlText]);
 
   const summary = useMemo(() => {
@@ -144,10 +260,22 @@ export default function XmlFeedViewerApp() {
       };
     }
 
+    const allNodes = [...doc.getElementsByTagName("*")];
+
+    const livProperties = allNodes.filter((el) => el.localName === "Property").length;
+    const livUnits = allNodes.filter((el) => el.localName === "Unit").length;
+    const livFloorplans = allNodes.filter((el) => el.localName === "Floorplan").length;
+
+    const mitsPhysicalProperties = allNodes.filter(
+      (el) => el.localName === "PhysicalProperty"
+    ).length;
+
+    const mitsUnits = allNodes.filter((el) => el.localName === "ILS_Unit").length;
+
     return {
-      properties: doc.querySelectorAll("Property").length,
-      floorplans: doc.querySelectorAll("Floorplan").length,
-      units: doc.querySelectorAll("Unit").length,
+      properties: mitsPhysicalProperties || livProperties,
+      floorplans: livFloorplans,
+      units: mitsUnits || livUnits,
     };
   }, [xmlText]);
 
@@ -223,7 +351,8 @@ export default function XmlFeedViewerApp() {
 
           {useProxy && (
             <p className="proxy-note">
-              Proxy mode is on. Replace the placeholder proxy URL in the code with your deployed proxy endpoint.
+              Proxy mode is on. Replace the placeholder proxy URL in the code with
+              your deployed proxy endpoint.
             </p>
           )}
 
@@ -241,35 +370,35 @@ export default function XmlFeedViewerApp() {
           ) : (
             <div className="listing-grid">
               {listings.map((listing, index) => (
-                <div
-                  className="listing-card"
-                  key={`${listing.propertyName}-${listing.unitNumber}-${index}`}
-                >
-                  <div className="listing-image-wrap">
-                    {listing.photo ? (
-                      <img
-                        src={listing.photo}
-                        alt={`${listing.propertyName} Unit ${listing.unitNumber}`}
-                        className="listing-image"
-                      />
-                    ) : (
-                      <div className="listing-image-placeholder">No Image</div>
-                    )}
-                  </div>
+               <div
+  className={`listing-card ${listing.photo ? "has-image" : "no-image"}`}
+  key={`${listing.propertyName}-${listing.unitNumber}-${index}`}
+>
+  {listing.photo ? (
+    <div className="listing-image-wrap">
+      <img
+        src={listing.photo}
+        alt={`${listing.propertyName} Unit ${listing.unitNumber}`}
+        className="listing-image"
+      />
+    </div>
+  ) : null}
 
-                  <div className="listing-content">
-                    <h2>{listing.propertyName}</h2>
+  <div className="listing-content">
+                    <h2>{listing.propertyName || "Unnamed Property"}</h2>
 
                     <p className="address">
-                      {listing.address1}, {listing.city}, {listing.region} {listing.postal}
+                      {[listing.address1, listing.city, listing.region, listing.postal]
+                        .filter(Boolean)
+                        .join(", ")}
                     </p>
 
                     <div className="listing-meta">
-                      <span>Unit {listing.unitNumber}</span>
-                      <span>{listing.beds} Beds</span>
-                      <span>{listing.baths} Baths</span>
-                      <span>{listing.sqft} SF</span>
-                      <span>{listing.buildingType}</span>
+                      {listing.unitNumber && <span>Unit {listing.unitNumber}</span>}
+                      {listing.beds && <span>{listing.beds} Beds</span>}
+                      {listing.baths && <span>{listing.baths} Baths</span>}
+                      {listing.sqft && <span>{listing.sqft} SF</span>}
+                      {listing.buildingType && <span>{listing.buildingType}</span>}
                     </div>
 
                     <div className="listing-rent">
@@ -293,9 +422,9 @@ export default function XmlFeedViewerApp() {
                       {listing.email && <span>{listing.email}</span>}
                     </div>
 
-                    {listing.website && (
+                    {(listing.unitPageSlug || listing.website) && (
                       <a
-                        href={listing.website}
+                        href={listing.unitPageSlug || listing.website}
                         target="_blank"
                         rel="noreferrer"
                         className="listing-button"

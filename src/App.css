@@ -162,12 +162,19 @@ pre {
 }
 
 .listing-card {
-  display: grid;
-  grid-template-columns: 260px 1fr;
   background: #0f172a;
   border: 1px solid #334155;
   border-radius: 14px;
   overflow: hidden;
+}
+
+.listing-card.has-image {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+}
+
+.listing-card.no-image {
+  display: block;
 }
 
 .listing-image-wrap {
