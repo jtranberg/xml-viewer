@@ -239,11 +239,11 @@ export default function XmlFeedViewerApp() {
           }
 
           const photos = [...unitNode.getElementsByTagName("*")]
-  .filter((el) => el.localName === "Photo")
-  .map((el) => el.textContent?.trim() || "")
-  .filter(Boolean);
+            .filter((el) => el.localName === "Photo")
+            .map((el) => el.textContent?.trim() || "")
+            .filter(Boolean);
 
-const photo = photos[0] || "";
+          const photo = photos[0] || "";
 
           mitsListings.push({
             propertyName,
@@ -269,8 +269,8 @@ const photo = photos[0] || "";
             availableDate,
             occupancyStatus: "",
             photo,
-photos,
-unitPageSlug: unitUrl,
+            photos,
+            unitPageSlug: unitUrl,
           });
         });
       });
@@ -423,35 +423,37 @@ unitPageSlug: unitUrl,
                   key={`${listing.propertyName}-${listing.unitNumber}-${index}`}
                 >
                   {listing.photo && (
-  <div className="listing-image-wrap">
-    <img
-      src={
-        selectedImages[`${listing.propertyName}-${listing.unitNumber}-${index}`] ||
-        listing.photo
-      }
-      alt={`${listing.propertyName} Unit ${listing.unitNumber}`}
-      className="listing-image"
-    />
+                    <div className="listing-image-wrap">
+                      <img
+                        src={
+                          selectedImages[
+                            `${listing.propertyName}-${listing.unitNumber}-${index}`
+                          ] || listing.photo
+                        }
+                        alt={`${listing.propertyName} Unit ${listing.unitNumber}`}
+                        className="listing-image"
+                      />
 
-    {listing.photos?.length > 1 && (
-      <div className="listing-thumbs">
-        {listing.photos.map((img, imgIndex) => (
-          <img
-            key={imgIndex}
-            src={img}
-            className="listing-thumb"
-            onClick={() =>
-              setSelectedImages((prev) => ({
-                ...prev,
-                [`${listing.propertyName}-${listing.unitNumber}-${index}`]: img,
-              }))
-            }
-          />
-        ))}
-      </div>
-    )}
-  </div>
-)}
+                      {listing.photos?.length > 1 && (
+                        <div className="listing-thumbs">
+                          {listing.photos.map((img, imgIndex) => (
+                            <img
+                              key={imgIndex}
+                              src={img}
+                              className="listing-thumb"
+                              onClick={() =>
+                                setSelectedImages((prev) => ({
+                                  ...prev,
+                                  [`${listing.propertyName}-${listing.unitNumber}-${index}`]:
+                                    img,
+                                }))
+                              }
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="listing-content">
                     <h2>{listing.propertyName || "Unnamed Property"}</h2>

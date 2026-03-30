@@ -282,6 +282,42 @@ pre {
 .listing-button:hover {
   opacity: 0.92;
 }
+.listing-media {
+  display: flex;
+  flex-direction: column;
+  background: #020617;
+}
+
+.listing-image-wrap {
+  width: 100%;
+  height: 220px;
+  overflow: hidden;
+}
+
+.listing-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.listing-thumbs {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  overflow-x: auto;
+  background: #020617;
+}
+
+.listing-thumb {
+  width: 60px;
+  height: 45px;
+  object-fit: cover;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid #334155;
+  flex: 0 0 auto;
+}
 
 @media (max-width: 900px) {
   .listing-card {
