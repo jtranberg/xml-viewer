@@ -5,6 +5,7 @@ export default function XmlFeedViewerApp() {
   const [feedUrl, setFeedUrl] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [useProxy, setUseProxy] = useState(false);
 
   const [xmlText, setXmlText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -17,13 +18,29 @@ export default function XmlFeedViewerApp() {
     setCopied(false);
 
     try {
+      if (!feedUrl.trim()) {
+        throw new Error("Please enter a feed URL.");
+      }
+
       const headers = {};
 
       if (username || password) {
         headers.Authorization = "Basic " + btoa(`${username}:${password}`);
       }
 
-      const res = await fetch(feedUrl, { headers });
+      let res;
+
+      if (useProxy) {
+        const proxyBase = "https://your-proxy-url.onrender.com/proxy-feed";
+        const proxyUrl =
+          `${proxyBase}?url=${encodeURIComponent(feedUrl)}` +
+          `&username=${encodeURIComponent(username)}` +
+          `&password=${encodeURIComponent(password)}`;
+
+        res = await fetch(proxyUrl);
+      } else {
+        res = await fetch(feedUrl, { headers });
+      }
 
       if (!res.ok) {
         throw new Error(`Request failed: ${res.status} ${res.statusText}`);
@@ -175,6 +192,17 @@ export default function XmlFeedViewerApp() {
             />
           </div>
 
+          <div className="row proxy-row">
+            <label className="proxy-toggle">
+              <input
+                type="checkbox"
+                checked={useProxy}
+                onChange={(e) => setUseProxy(e.target.checked)}
+              />
+              <span>Use Proxy for CORS-protected feeds</span>
+            </label>
+          </div>
+
           <div className="row">
             <button onClick={loadFeed} disabled={loading || !feedUrl.trim()}>
               {loading ? "Loading..." : "Load Feed"}
@@ -192,6 +220,12 @@ export default function XmlFeedViewerApp() {
               </a>
             )}
           </div>
+
+          {useProxy && (
+            <p className="proxy-note">
+              Proxy mode is on. Replace the placeholder proxy URL in the code with your deployed proxy endpoint.
+            </p>
+          )}
 
           {error && <div className="error">{error}</div>}
         </div>

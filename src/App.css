@@ -320,3 +320,26 @@ pre {
     min-width: 100%;
   }
 }
+
+.proxy-row {
+  align-items: center;
+}
+
+.proxy-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #e2e8f0;
+  font-size: 14px;
+}
+
+.proxy-toggle input {
+  width: auto;
+  min-width: auto;
+  margin: 0;
+}
+
+.proxy-note {
+  margin-top: 10px;
+  color: #fbbf24;
+}
