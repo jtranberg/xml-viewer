@@ -2,9 +2,10 @@ import { useMemo, useState } from "react";
 import "./App.css";
 
 export default function XmlFeedViewerApp() {
-  const [feedUrl, setFeedUrl] = useState(
-    "http://localhost:3000/feeds/liv-rent.xml?available=true"
-  );
+  const [feedUrl, setFeedUrl] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
   const [xmlText, setXmlText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -16,14 +17,13 @@ export default function XmlFeedViewerApp() {
     setCopied(false);
 
     try {
-      const username = "WallFinancialCorporation";
-      const password = "#5LNwnlq";
+      const headers = {};
 
-      const res = await fetch(feedUrl, {
-        headers: {
-          Authorization: "Basic " + btoa(`${username}:${password}`),
-        },
-      });
+      if (username || password) {
+        headers.Authorization = "Basic " + btoa(`${username}:${password}`);
+      }
+
+      const res = await fetch(feedUrl, { headers });
 
       if (!res.ok) {
         throw new Error(`Request failed: ${res.status} ${res.statusText}`);
@@ -64,7 +64,6 @@ export default function XmlFeedViewerApp() {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlText, "application/xml");
     const parserError = doc.querySelector("parsererror");
-
     if (parserError) return [];
 
     const items = [...doc.querySelectorAll("Listing")];
@@ -75,14 +74,34 @@ export default function XmlFeedViewerApp() {
 
       return {
         propertyName: property?.querySelector("Name")?.textContent || "",
+        address1: property?.querySelector("Address1")?.textContent || "",
         city: property?.querySelector("City")?.textContent || "",
+        region: property?.querySelector("Region")?.textContent || "",
+        postal: property?.querySelector("Postal")?.textContent || "",
+        description: property?.querySelector("Description")?.textContent || "",
+        website: property?.querySelector("Website")?.textContent || "",
+        buildingType: property?.querySelector("BuildingType")?.textContent || "",
+        phone: property?.querySelector("Phone")?.textContent || "",
+        email: property?.querySelector("Email")?.textContent || "",
+
         unitNumber: unit?.querySelector("UnitNumber")?.textContent || "",
-        rent: unit?.querySelector("Pricing > Rent")?.textContent || "",
+        unitType: unit?.querySelector("UnitType")?.textContent || "",
+        floorplanName: unit?.querySelector("FloorplanName")?.textContent || "",
         beds: unit?.querySelector("Bedrooms")?.textContent || "",
         baths: unit?.querySelector("Bathrooms")?.textContent || "",
-        available: unit?.querySelector("Availability > IsAvailable")?.textContent || "",
+        sqft:
+          unit?.querySelector("SquareFootage > Max")?.textContent ||
+          unit?.querySelector("SquareFootage > Min")?.textContent ||
+          "",
+        rent: unit?.querySelector("Pricing > Rent")?.textContent || "",
+        available:
+          unit?.querySelector("Availability > IsAvailable")?.textContent || "",
         availableDate:
           unit?.querySelector("Availability > AvailableDate")?.textContent || "",
+        occupancyStatus:
+          unit?.querySelector("Availability > OccupancyStatus")?.textContent || "",
+        photo: unit?.querySelector("Media > Photos > Photo")?.textContent || "",
+        unitPageSlug: unit?.querySelector("UnitPageSlug")?.textContent || "",
       };
     });
   }, [xmlText]);
@@ -121,7 +140,7 @@ export default function XmlFeedViewerApp() {
         <div className="card header">
           <div>
             <h1>XML Feed Viewer</h1>
-            <p>Load and inspect your syndicator XML feed</p>
+            <p>Load and inspect any XML feed</p>
           </div>
 
           <div className="stats">
@@ -133,16 +152,31 @@ export default function XmlFeedViewerApp() {
 
         <div className="card">
           <label htmlFor="feed-url">Feed URL</label>
-
           <div className="row">
             <input
               id="feed-url"
               value={feedUrl}
               onChange={(e) => setFeedUrl(e.target.value)}
-              placeholder="Enter XML feed URL"
+              placeholder="Paste XML feed URL"
             />
+          </div>
 
-            <button onClick={loadFeed} disabled={loading}>
+          <div className="row">
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Username (optional)"
+            />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password (optional)"
+            />
+          </div>
+
+          <div className="row">
+            <button onClick={loadFeed} disabled={loading || !feedUrl.trim()}>
               {loading ? "Loading..." : "Load Feed"}
             </button>
 
@@ -152,9 +186,11 @@ export default function XmlFeedViewerApp() {
           </div>
 
           <div className="links">
-            <a href={feedUrl} target="_blank" rel="noreferrer">
-              Open raw feed
-            </a>
+            {feedUrl && (
+              <a href={feedUrl} target="_blank" rel="noreferrer">
+                Open raw feed
+              </a>
+            )}
           </div>
 
           {error && <div className="error">{error}</div>}
@@ -162,17 +198,82 @@ export default function XmlFeedViewerApp() {
 
         <div className="card">
           <div className="card-header">
-            <h2>Raw XML</h2>
-            <span>{xmlText ? `${xmlText.length} chars` : "No feed loaded"}</span>
+            <h2>Listings Preview</h2>
+            <span>{listings.length} listings</span>
           </div>
 
-          <div className="xml-box">
-            {xmlText ? (
-              <pre dangerouslySetInnerHTML={{ __html: escapedXml }} />
-            ) : (
-              <p>Load a feed to view XML</p>
-            )}
-          </div>
+          {listings.length === 0 ? (
+            <p>No data loaded</p>
+          ) : (
+            <div className="listing-grid">
+              {listings.map((listing, index) => (
+                <div
+                  className="listing-card"
+                  key={`${listing.propertyName}-${listing.unitNumber}-${index}`}
+                >
+                  <div className="listing-image-wrap">
+                    {listing.photo ? (
+                      <img
+                        src={listing.photo}
+                        alt={`${listing.propertyName} Unit ${listing.unitNumber}`}
+                        className="listing-image"
+                      />
+                    ) : (
+                      <div className="listing-image-placeholder">No Image</div>
+                    )}
+                  </div>
+
+                  <div className="listing-content">
+                    <h2>{listing.propertyName}</h2>
+
+                    <p className="address">
+                      {listing.address1}, {listing.city}, {listing.region} {listing.postal}
+                    </p>
+
+                    <div className="listing-meta">
+                      <span>Unit {listing.unitNumber}</span>
+                      <span>{listing.beds} Beds</span>
+                      <span>{listing.baths} Baths</span>
+                      <span>{listing.sqft} SF</span>
+                      <span>{listing.buildingType}</span>
+                    </div>
+
+                    <div className="listing-rent">
+                      {listing.rent ? `$${listing.rent}/month` : "No rent listed"}
+                    </div>
+
+                    <div className="listing-availability">
+                      Available: {listing.availableDate || "N/A"}
+                    </div>
+
+                    {listing.floorplanName && (
+                      <div className="listing-floorplan">{listing.floorplanName}</div>
+                    )}
+
+                    {listing.description && (
+                      <p className="listing-description">{listing.description}</p>
+                    )}
+
+                    <div className="listing-contact">
+                      {listing.phone && <span>{listing.phone}</span>}
+                      {listing.email && <span>{listing.email}</span>}
+                    </div>
+
+                    {listing.website && (
+                      <a
+                        href={listing.website}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="listing-button"
+                      >
+                        View Property
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="card">
@@ -189,6 +290,7 @@ export default function XmlFeedViewerApp() {
                   <th>Unit</th>
                   <th>Beds</th>
                   <th>Baths</th>
+                  <th>Sqft</th>
                   <th>Rent</th>
                   <th>Available</th>
                   <th>Date</th>
@@ -203,6 +305,7 @@ export default function XmlFeedViewerApp() {
                     <td>{listing.unitNumber}</td>
                     <td>{listing.beds}</td>
                     <td>{listing.baths}</td>
+                    <td>{listing.sqft}</td>
                     <td>{listing.rent ? `$${listing.rent}` : ""}</td>
                     <td>{listing.available}</td>
                     <td>{listing.availableDate}</td>
@@ -211,6 +314,21 @@ export default function XmlFeedViewerApp() {
               </tbody>
             </table>
           )}
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <h2>Raw XML</h2>
+            <span>{xmlText ? `${xmlText.length} chars` : "No feed loaded"}</span>
+          </div>
+
+          <div className="xml-box">
+            {xmlText ? (
+              <pre dangerouslySetInnerHTML={{ __html: escapedXml }} />
+            ) : (
+              <p>Load a feed to view XML</p>
+            )}
+          </div>
         </div>
       </div>
     </div>
