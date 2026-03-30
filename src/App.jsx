@@ -304,7 +304,7 @@ export default function XmlFeedViewerApp() {
       <div className="container">
         <div className="card header">
           <div>
-            <h1>App Intelligence.ca <br></br>XML Feed Viewer</h1>
+            <h1>App Intelligence.ca <br></br><br></br>XML Feed Viewer</h1>
             <p>Load and inspect any XML feed</p>
           </div>
 
