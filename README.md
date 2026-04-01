@@ -8,7 +8,9 @@
 
 ![XML Feed Viewer Screenshot](./public/screenshot.png)
 
-A lightweight XML feed viewer built to load, inspect, and validate property listing feeds in a visual interface.
+A lightweight XML feed viewer for inspecting and validating property listing feeds, with visual previews, unit breakdowns, and raw XML inspection.
+
+Built to streamline feed QA and improve listing accuracy by turning raw XML into a structured, human-readable interface.
 
 ## Features
 
