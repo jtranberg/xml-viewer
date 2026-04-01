@@ -40,7 +40,10 @@ Built to streamline feed QA and improve listing accuracy by turning raw XML into
 ## Running Locally
 
 ```bash
-npm test
+
 npm install
 npm run dev
+npm test
+npm run test:run
+
 
