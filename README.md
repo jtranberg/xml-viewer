@@ -4,6 +4,9 @@
 ![React](https://img.shields.io/badge/React-UI-61dafb)
 ![Vite](https://img.shields.io/badge/Vite-Build-646cff)
 ![Status](https://img.shields.io/badge/status-active-success)
+## Screenshot
+
+![XML Feed Viewer Screenshot](./screenshot.png)
 
 A lightweight XML feed viewer built to load, inspect, and validate property listing feeds in a visual interface.
 
@@ -35,5 +38,7 @@ A lightweight XML feed viewer built to load, inspect, and validate property list
 ## Running Locally
 
 ```bash
+npm test
 npm install
 npm run dev
+
