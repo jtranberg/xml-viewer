@@ -1,16 +1,39 @@
-# React + Vite
+# XML Feed Viewer
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+![Tests](https://img.shields.io/badge/tests-4%20passing-brightgreen)
+![React](https://img.shields.io/badge/React-UI-61dafb)
+![Vite](https://img.shields.io/badge/Vite-Build-646cff)
+![Status](https://img.shields.io/badge/status-active-success)
 
-Currently, two official plugins are available:
+A lightweight XML feed viewer built to load, inspect, and validate property listing feeds in a visual interface.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
 
-## React Compiler
+- Load XML feeds from a URL
+- Supports optional Basic Auth credentials
+- Optional proxy mode for CORS-protected feeds
+- Parses and previews listing data visually
+- Displays listing cards, unit table, and raw XML
+- Handles both listing-style and MITS-style feed structures
+- Includes automated tests for core UI flows
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the ESLint configuration
+- React
+- Vite
+- JavaScript / JSX
+- Vitest
+- React Testing Library
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Tested Flows
+
+- Renders app heading
+- Shows empty state before loading
+- Loads and displays listing data from XML
+- Shows error state when fetch fails
+
+## Running Locally
+
+```bash
+npm install
+npm run dev

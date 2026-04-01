@@ -6,6 +6,8 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
   globalIgnores(['dist']),
+
+  // MAIN APP CONFIG
   {
     files: ['**/*.{js,jsx}'],
     extends: [
@@ -24,6 +26,21 @@ export default defineConfig([
     },
     rules: {
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+    },
+  },
+
+  // ✅ TEST CONFIG (ADD THIS)
+  {
+    files: ['**/*.test.{js,jsx}', '**/__tests__/**/*.{js,jsx}'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        describe: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        vi: 'readonly',
+      },
     },
   },
 ])
