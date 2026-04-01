@@ -6,7 +6,7 @@
 ![Status](https://img.shields.io/badge/status-active-success)
 ## Screenshot
 
-![XML Feed Viewer Screenshot](./screenshot.png)
+![XML Feed Viewer Screenshot](./public/screenshot.png)
 
 A lightweight XML feed viewer built to load, inspect, and validate property listing feeds in a visual interface.
 
