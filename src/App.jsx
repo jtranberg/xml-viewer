@@ -33,47 +33,58 @@ export default function XmlFeedViewerApp() {
   const [viewMode, setViewMode] = useState("cards");
 
   async function loadFeed() {
-  setLoading(true);
-  setError("");
-  setCopied(false);
+    setLoading(true);
+    setError("");
+    setCopied(false);
 
-  try {
-    if (!feedUrl.trim()) throw new Error("Please enter a feed URL.");
+    try {
+      if (!feedUrl.trim()) throw new Error("Please enter a feed URL.");
 
-    const headers = {};
-    if (!useProxy && (username || password)) {
-      headers.Authorization = "Basic " + btoa(`${username}:${password}`);
-    }
-
-    let res;
-
-    if (useProxy) {
       const proxyBase =
         import.meta.env.VITE_PROXY_URL || "http://localhost:10000/proxy-feed";
 
-      const proxyUrl =
-        `${proxyBase}?url=${encodeURIComponent(feedUrl)}` +
-        `&username=${encodeURIComponent(username)}` +
-        `&password=${encodeURIComponent(password)}`;
+      const headers = {};
 
-      res = await fetch(proxyUrl);
-    } else {
-      res = await fetch(feedUrl, { headers });
+      if (username || password) {
+        headers.Authorization = "Basic " + btoa(`${username}:${password}`);
+      }
+
+      let text = "";
+
+      // 1️⃣ Try direct first
+      try {
+        const directRes = await fetch(feedUrl, { headers });
+
+        if (!directRes.ok) {
+          throw new Error("Direct fetch failed");
+        }
+
+        text = await directRes.text();
+      } catch (err) {
+        console.log("Direct fetch failed → using proxy", err);
+
+        const proxyUrl =
+          `${proxyBase}?url=${encodeURIComponent(feedUrl)}` +
+          `&username=${encodeURIComponent(username)}` +
+          `&password=${encodeURIComponent(password)}`;
+
+        const proxyRes = await fetch(proxyUrl);
+
+        if (!proxyRes.ok) {
+          throw new Error(`Proxy failed: ${proxyRes.status}`);
+        }
+
+        text = await proxyRes.text();
+      }
+
+      setXmlText(text);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load feed");
+      setXmlText("");
+    } finally {
+      setLoading(false);
     }
-
-    if (!res.ok) {
-      throw new Error(`Request failed: ${res.status} ${res.statusText}`);
-    }
-
-    const text = await res.text();
-    setXmlText(text);
-  } catch (err) {
-    setError(err instanceof Error ? err.message : "Failed to load feed");
-    setXmlText("");
-  } finally {
-    setLoading(false);
   }
-}
 
   async function copyXml() {
     if (!xmlText) return;
@@ -735,7 +746,24 @@ function buildGenericRecords(doc, profile) {
     const title =
       pickFirstValue(flat, TITLE_KEYS) || `${node.localName} ${index + 1}`;
     const subtitle = pickFirstValue(flat, SUBTITLE_KEYS);
-    const description = pickFirstValue(flat, DESCRIPTION_KEYS);
+    let description = pickFirstValue(flat, DESCRIPTION_KEYS);
+
+    // 🔥 NEW: prefer encoded HTML content if present
+    const encoded =
+      flat["content_encoded"] || flat["encoded"] || flat["content"];
+
+    if (encoded) {
+      // strip HTML for preview
+      const temp = document.createElement("div");
+      temp.innerHTML = Array.isArray(encoded) ? encoded[0] : encoded;
+
+      const cleanText = temp.textContent || temp.innerText || "";
+
+      // only override if meaningful
+      if (cleanText.length > 100) {
+        description = cleanText.slice(0, 300) + "...";
+      }
+    }
     const link = findBestLink(flat);
     const image = findBestImage(flat);
 
