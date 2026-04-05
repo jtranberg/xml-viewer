@@ -416,6 +416,7 @@ export default function XmlFeedViewerApp() {
             {analysis.records.length === 0 ? (
               <p>No data loaded</p>
             ) : (
+              <div className="table-wrap">
               <table className="table">
                 <thead>
                   <tr>
@@ -446,7 +447,7 @@ export default function XmlFeedViewerApp() {
                     );
                   })}
                 </tbody>
-              </table>
+              </table></div>
             )}
           </div>
         )}
