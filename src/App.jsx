@@ -33,44 +33,47 @@ export default function XmlFeedViewerApp() {
   const [viewMode, setViewMode] = useState("cards");
 
   async function loadFeed() {
-    setLoading(true);
-    setError("");
-    setCopied(false);
+  setLoading(true);
+  setError("");
+  setCopied(false);
 
-    try {
-      if (!feedUrl.trim()) throw new Error("Please enter a feed URL.");
+  try {
+    if (!feedUrl.trim()) throw new Error("Please enter a feed URL.");
 
-      const headers = {};
-      if (username || password) {
-        headers.Authorization = "Basic " + btoa(`${username}:${password}`);
-      }
-
-      let res;
-
-      if (useProxy) {
-        const proxyBase = "https://your-proxy-url.onrender.com/proxy-feed";
-        const proxyUrl =
-          `${proxyBase}?url=${encodeURIComponent(feedUrl)}` +
-          `&username=${encodeURIComponent(username)}` +
-          `&password=${encodeURIComponent(password)}`;
-        res = await fetch(proxyUrl);
-      } else {
-        res = await fetch(feedUrl, { headers });
-      }
-
-      if (!res.ok) {
-        throw new Error(`Request failed: ${res.status} ${res.statusText}`);
-      }
-
-      const text = await res.text();
-      setXmlText(text);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load feed");
-      setXmlText("");
-    } finally {
-      setLoading(false);
+    const headers = {};
+    if (!useProxy && (username || password)) {
+      headers.Authorization = "Basic " + btoa(`${username}:${password}`);
     }
+
+    let res;
+
+    if (useProxy) {
+      const proxyBase =
+        import.meta.env.VITE_PROXY_URL || "http://localhost:10000/proxy-feed";
+
+      const proxyUrl =
+        `${proxyBase}?url=${encodeURIComponent(feedUrl)}` +
+        `&username=${encodeURIComponent(username)}` +
+        `&password=${encodeURIComponent(password)}`;
+
+      res = await fetch(proxyUrl);
+    } else {
+      res = await fetch(feedUrl, { headers });
+    }
+
+    if (!res.ok) {
+      throw new Error(`Request failed: ${res.status} ${res.statusText}`);
+    }
+
+    const text = await res.text();
+    setXmlText(text);
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Failed to load feed");
+    setXmlText("");
+  } finally {
+    setLoading(false);
   }
+}
 
   async function copyXml() {
     if (!xmlText) return;
