@@ -1,22 +1,9 @@
 import { useMemo, useState } from "react";
 import "./App.css";
 
-const TITLE_KEYS = [
-  "title",
-  "name",
-  "marketingname",
-  "label",
-  "id",
-  "guid",
-  "loc",
-];
+const TITLE_KEYS = ["title", "name", "marketingname", "label", "id", "guid", "loc"];
 const SUBTITLE_KEYS = ["type", "category", "status", "city", "region", "state"];
-const DESCRIPTION_KEYS = [
-  "description",
-  "summary",
-  "longdescription",
-  "content",
-];
+const DESCRIPTION_KEYS = ["description", "summary", "longdescription", "content"];
 const LINK_KEYS = ["link", "url", "website", "loc", "unitavailabilityurl"];
 const IMAGE_KEYS = ["image", "photo", "thumbnail", "src", "logo"];
 
@@ -38,31 +25,21 @@ export default function XmlFeedViewerApp() {
     setCopied(false);
 
     try {
-      if (!feedUrl.trim()) throw new Error("Please enter a feed URL.");
+      if (!feedUrl.trim()) {
+        throw new Error("Please enter a feed URL.");
+      }
 
       const proxyBase =
         import.meta.env.VITE_PROXY_URL || "http://localhost:10000/proxy-feed";
 
       const headers = {};
-
       if (username || password) {
         headers.Authorization = "Basic " + btoa(`${username}:${password}`);
       }
 
       let text = "";
 
-      // 1️⃣ Try direct first
-      try {
-        const directRes = await fetch(feedUrl, { headers });
-
-        if (!directRes.ok) {
-          throw new Error("Direct fetch failed");
-        }
-
-        text = await directRes.text();
-      } catch (err) {
-        console.log("Direct fetch failed → using proxy", err);
-
+      if (useProxy) {
         const proxyUrl =
           `${proxyBase}?url=${encodeURIComponent(feedUrl)}` +
           `&username=${encodeURIComponent(username)}` +
@@ -71,10 +48,34 @@ export default function XmlFeedViewerApp() {
         const proxyRes = await fetch(proxyUrl);
 
         if (!proxyRes.ok) {
-          throw new Error(`Proxy failed: ${proxyRes.status}`);
+          throw new Error(`Proxy failed: ${proxyRes.status} ${proxyRes.statusText}`);
         }
 
         text = await proxyRes.text();
+      } else {
+        try {
+          const directRes = await fetch(feedUrl, { headers });
+
+          if (!directRes.ok) {
+            throw new Error(`Direct fetch failed: ${directRes.status} ${directRes.statusText}`);
+          }
+
+          text = await directRes.text();
+        // eslint-disable-next-line no-unused-vars
+        } catch (err) {
+          const proxyUrl =
+            `${proxyBase}?url=${encodeURIComponent(feedUrl)}` +
+            `&username=${encodeURIComponent(username)}` +
+            `&password=${encodeURIComponent(password)}`;
+
+          const proxyRes = await fetch(proxyUrl);
+
+          if (!proxyRes.ok) {
+            throw new Error(`Proxy failed: ${proxyRes.status} ${proxyRes.statusText}`);
+          }
+
+          text = await proxyRes.text();
+        }
       }
 
       setXmlText(text);
@@ -100,14 +101,18 @@ export default function XmlFeedViewerApp() {
 
   const xmlDoc = useMemo(() => {
     if (!xmlText) return null;
+
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlText, "application/xml");
     const parserError = doc.querySelector("parsererror");
+
     if (parserError) return null;
     return doc;
   }, [xmlText]);
 
   const escapedXml = useMemo(() => {
+    if (!xmlText || xmlText.length > 200000) return "";
+
     return xmlText
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
@@ -123,12 +128,12 @@ export default function XmlFeedViewerApp() {
       };
     }
 
-    const livListings = [...xmlDoc.getElementsByTagName("*")].filter(
-      (el) => el.localName === "Listing",
-    );
+    const allNodes = [...xmlDoc.getElementsByTagName("*")];
 
+    const livListings = allNodes.filter((el) => el.localName === "Listing");
     if (livListings.length > 0) {
       const records = buildLivRecords(xmlDoc);
+
       return {
         profile: {
           rootName: xmlDoc.documentElement.localName,
@@ -141,24 +146,25 @@ export default function XmlFeedViewerApp() {
               count: livListings.length,
             },
           ],
-          totalNodes: xmlDoc.getElementsByTagName("*").length,
+          totalNodes: allNodes.length,
         },
         records,
         summary: [
           { label: "Schema", value: "LIV Real Estate" },
           { label: "Root", value: xmlDoc.documentElement.localName },
           { label: "Listings", value: records.length },
-          { label: "Nodes", value: xmlDoc.getElementsByTagName("*").length },
+          { label: "Nodes", value: allNodes.length },
         ],
       };
     }
 
-    const physicalProperties = [...xmlDoc.getElementsByTagName("*")].filter(
+    const physicalProperties = allNodes.filter(
       (el) => el.localName === "PhysicalProperty",
     );
 
     if (physicalProperties.length > 0) {
       const records = buildMitsRecords(xmlDoc);
+
       return {
         profile: {
           rootName: xmlDoc.documentElement.localName,
@@ -171,14 +177,14 @@ export default function XmlFeedViewerApp() {
               count: records.length,
             },
           ],
-          totalNodes: xmlDoc.getElementsByTagName("*").length,
+          totalNodes: allNodes.length,
         },
         records,
         summary: [
           { label: "Schema", value: "MITS Real Estate" },
           { label: "Root", value: xmlDoc.documentElement.localName },
           { label: "Units", value: records.length },
-          { label: "Nodes", value: xmlDoc.getElementsByTagName("*").length },
+          { label: "Nodes", value: allNodes.length },
         ],
       };
     }
@@ -200,9 +206,11 @@ export default function XmlFeedViewerApp() {
 
   const tableColumns = useMemo(() => {
     const keySet = new Set();
+
     analysis.records.slice(0, 25).forEach((record) => {
       record.fields.forEach((field) => keySet.add(field.key));
     });
+
     return ["title", "subtitle", ...Array.from(keySet).slice(0, 8)];
   }, [analysis.records]);
 
@@ -229,11 +237,7 @@ export default function XmlFeedViewerApp() {
               </>
             ) : (
               analysis.summary.map((item) => (
-                <StatCard
-                  key={item.label}
-                  label={item.label}
-                  value={item.value}
-                />
+                <StatCard key={item.label} label={item.label} value={item.value} />
               ))
             )}
           </div>
@@ -241,6 +245,7 @@ export default function XmlFeedViewerApp() {
 
         <div className="card">
           <label htmlFor="feed-url">Feed URL</label>
+
           <div className="row">
             <input
               id="feed-url"
@@ -279,6 +284,7 @@ export default function XmlFeedViewerApp() {
             <button onClick={loadFeed} disabled={loading || !feedUrl.trim()}>
               {loading ? "Loading..." : "Load Feed"}
             </button>
+
             <button onClick={copyXml} disabled={!xmlText}>
               {copied ? "Copied" : "Copy XML"}
             </button>
@@ -294,8 +300,7 @@ export default function XmlFeedViewerApp() {
 
           {useProxy && (
             <p className="proxy-note">
-              Proxy mode is on. Replace the placeholder proxy URL in the code
-              with your deployed proxy endpoint.
+              Proxy mode is enabled. The feed will be requested through your proxy endpoint.
             </p>
           )}
 
@@ -366,13 +371,13 @@ export default function XmlFeedViewerApp() {
 
                     <div className="listing-content">
                       <h2>{record.title || "Untitled Record"}</h2>
+
                       {record.subtitle && (
                         <p className="address">{record.subtitle}</p>
                       )}
+
                       {record.description && (
-                        <p className="listing-description">
-                          {record.description}
-                        </p>
+                        <p className="listing-description">{record.description}</p>
                       )}
 
                       <div className="generic-fields">
@@ -407,6 +412,7 @@ export default function XmlFeedViewerApp() {
         {viewMode === "table" && (
           <div className="card">
             <h2>Table View</h2>
+
             {analysis.records.length === 0 ? (
               <p>No data loaded</p>
             ) : (
@@ -418,11 +424,13 @@ export default function XmlFeedViewerApp() {
                     ))}
                   </tr>
                 </thead>
+
                 <tbody>
                   {analysis.records.map((record) => {
                     const fieldMap = Object.fromEntries(
                       record.fields.map((field) => [field.key, field.value]),
                     );
+
                     return (
                       <tr key={record.id}>
                         {tableColumns.map((column) => (
@@ -456,8 +464,7 @@ export default function XmlFeedViewerApp() {
               <>
                 <div className="generic-fields">
                   <div className="generic-field">
-                    <strong>Detected schema:</strong>{" "}
-                    {analysis.profile.detectedSchema}
+                    <strong>Detected schema:</strong> {analysis.profile.detectedSchema}
                   </div>
                   <div className="generic-field">
                     <strong>Total nodes:</strong> {analysis.profile.totalNodes}
@@ -465,6 +472,7 @@ export default function XmlFeedViewerApp() {
                 </div>
 
                 <h3>Repeated Node Candidates</h3>
+
                 <div className="listing-grid compact-grid">
                   {analysis.profile.repeatedCandidates.map((candidate) => (
                     <div className="listing-card no-image" key={candidate.key}>
@@ -487,16 +495,16 @@ export default function XmlFeedViewerApp() {
           <div className="card">
             <div className="card-header">
               <h2>Raw XML</h2>
-              <span>
-                {xmlText ? `${xmlText.length} chars` : "No feed loaded"}
-              </span>
+              <span>{xmlText ? `${xmlText.length} chars` : "No feed loaded"}</span>
             </div>
 
             <div className="xml-box">
-              {xmlText ? (
-                <pre dangerouslySetInnerHTML={{ __html: escapedXml }} />
-              ) : (
+              {!xmlText ? (
                 <p>Load a feed to view XML</p>
+              ) : xmlText.length > 200000 ? (
+                <p>Raw XML hidden because this feed is too large to render safely.</p>
+              ) : (
+                <pre dangerouslySetInnerHTML={{ __html: escapedXml }} />
               )}
             </div>
           </div>
@@ -521,12 +529,8 @@ function buildLivRecords(doc) {
           .filter(Boolean)
       : [];
 
-    const propertyName = property
-      ? getTextFromDescendants(property, "Name")
-      : "";
-    const address1 = property
-      ? getTextFromDescendants(property, "Address1")
-      : "";
+    const propertyName = property ? getTextFromDescendants(property, "Name") : "";
+    const address1 = property ? getTextFromDescendants(property, "Address1") : "";
     const city = property ? getTextFromDescendants(property, "City") : "";
     const region = property ? getTextFromDescendants(property, "Region") : "";
     const postal = property ? getTextFromDescendants(property, "Postal") : "";
@@ -537,8 +541,7 @@ function buildLivRecords(doc) {
     const beds = unit ? getTextFromDescendants(unit, "Bedrooms") : "";
     const baths = unit ? getTextFromDescendants(unit, "Bathrooms") : "";
     const sqft = unit
-      ? getTextFromDescendants(unit, "Max") ||
-        getTextFromDescendants(unit, "Min")
+      ? getTextFromDescendants(unit, "Max") || getTextFromDescendants(unit, "Min")
       : "";
     const rent = unit ? getTextFromDescendants(unit, "Rent") : "";
     const link = unit ? getTextFromDescendants(unit, "UnitPageSlug") : "";
@@ -601,9 +604,7 @@ function buildMitsRecords(doc) {
     const address1 = propertyIdNode
       ? getTextFromDescendants(propertyIdNode, "AddressLine1")
       : "";
-    const city = propertyIdNode
-      ? getTextFromDescendants(propertyIdNode, "City")
-      : "";
+    const city = propertyIdNode ? getTextFromDescendants(propertyIdNode, "City") : "";
     const region = propertyIdNode
       ? getTextFromDescendants(propertyIdNode, "State")
       : "";
@@ -615,13 +616,11 @@ function buildMitsRecords(doc) {
       : "";
 
     unitNodes.forEach((unitNode, unitIndex) => {
-      const availabilityNode = getFirstChildByLocalName(
-        unitNode,
-        "Availability",
-      );
+      const availabilityNode = getFirstChildByLocalName(unitNode, "Availability");
       const unitUrl = availabilityNode
         ? getTextFromDescendants(availabilityNode, "UnitAvailabilityURL")
         : "";
+
       const unitEl = getFirstChildByLocalName(
         getFirstChildByLocalName(unitNode, "Units") || unitNode,
         "Unit",
@@ -631,9 +630,7 @@ function buildMitsRecords(doc) {
         ? getTextFromDescendants(unitEl, "MarketingName")
         : "";
       const beds = unitEl ? getTextFromDescendants(unitEl, "UnitBedrooms") : "";
-      const baths = unitEl
-        ? getTextFromDescendants(unitEl, "UnitBathrooms")
-        : "";
+      const baths = unitEl ? getTextFromDescendants(unitEl, "UnitBathrooms") : "";
       const sqft = unitEl
         ? getTextFromDescendants(unitEl, "MaxSquareFeet") ||
           getTextFromDescendants(unitEl, "MinSquareFeet")
@@ -699,6 +696,7 @@ function buildGenericProfile(doc) {
     const path = getNodePath(node);
     const key = `${path}::${node.localName}`;
     const entry = counts.get(key);
+
     if (entry) {
       entry.count += 1;
     } else {
@@ -741,65 +739,33 @@ function buildGenericRecords(doc, profile) {
       getNodePath(node) === bestCandidate.path,
   );
 
-  return nodes.map((node, index) => {
+  return nodes.slice(0, 200).map((node, index) => {
     const flat = flattenInterestingFields(node);
     const title =
       pickFirstValue(flat, TITLE_KEYS) || `${node.localName} ${index + 1}`;
-    const subtitle = pickFirstValue(flat, SUBTITLE_KEYS);
+
+    const rawSubtitle = pickFirstValue(flat, SUBTITLE_KEYS);
+    const subtitle =
+      rawSubtitle &&
+      rawSubtitle.trim().toLowerCase() !== title.trim().toLowerCase()
+        ? rawSubtitle
+        : undefined;
+
     let description = pickFirstValue(flat, DESCRIPTION_KEYS);
 
-    // 🔥 NEW: prefer encoded HTML content if present
-    const encoded =
-      flat["content_encoded"] || flat["encoded"] || flat["content"];
-
+    const encoded = flat["content_encoded"] || flat["encoded"] || flat["content"];
     if (encoded) {
-      // strip HTML for preview
       const temp = document.createElement("div");
       temp.innerHTML = Array.isArray(encoded) ? encoded[0] : encoded;
 
       const cleanText = temp.textContent || temp.innerText || "";
-
-      // only override if meaningful
       if (cleanText.length > 100) {
         description = cleanText.slice(0, 300) + "...";
       }
     }
+
     const link = findBestLink(flat);
     const image = findBestImage(flat);
-
-    function findBestLink(flat) {
-      const priorityKeys = [
-        "link",
-        "guid",
-        "url",
-        "website",
-        "loc",
-        "link_href",
-      ];
-
-      for (const desired of priorityKeys) {
-        for (const [key, value] of Object.entries(flat)) {
-          if (key.toLowerCase() === desired) {
-            const values = Array.isArray(value) ? value : [value];
-            const valid = values.find(
-              (entry) =>
-                typeof entry === "string" && /^https?:\/\//i.test(entry),
-            );
-            if (valid) return valid;
-          }
-        }
-      }
-
-      for (const value of Object.values(flat)) {
-        const values = Array.isArray(value) ? value : [value];
-        const valid = values.find(
-          (entry) => typeof entry === "string" && /^https?:\/\//i.test(entry),
-        );
-        if (valid) return valid;
-      }
-
-      return undefined;
-    }
 
     return {
       id: `generic-${bestCandidate.tagName}-${index}`,
@@ -826,7 +792,6 @@ function buildGenericRecords(doc, profile) {
             return false;
           }
 
-          // hide noisy XML/debug attributes
           if (
             normalized.endsWith("_domain") ||
             normalized.endsWith("_rel") ||
@@ -834,18 +799,20 @@ function buildGenericRecords(doc, profile) {
             normalized.endsWith("_height") ||
             normalized.endsWith("_width") ||
             normalized.endsWith("_medium") ||
-            normalized.endsWith("_type")
+            normalized.endsWith("_type") ||
+            normalized.endsWith("_length")
           ) {
             return false;
           }
 
-          // hide duplicate link/image attribute helpers from field list
           if (
             normalized.includes("content_url") ||
             normalized.includes("link_href") ||
             normalized.includes("image_url") ||
             normalized.includes("photo_url") ||
-            normalized.includes("thumbnail_url")
+            normalized.includes("thumbnail_url") ||
+            normalized.includes("enclosure") ||
+            normalized.includes("media")
           ) {
             return false;
           }
@@ -854,7 +821,7 @@ function buildGenericRecords(doc, profile) {
         })
         .slice(0, 8)
         .map(([key, value]) => ({
-          key,
+          key: formatFieldLabel(key),
           value: Array.isArray(value) ? value.join(", ") : value,
         })),
       raw: flat,
@@ -868,7 +835,6 @@ function flattenInterestingFields(node) {
   [...node.children].forEach((child) => {
     const key = child.localName;
 
-    // capture useful attributes first
     if (child.attributes && child.attributes.length > 0) {
       [...child.attributes].forEach((attr) => {
         const attrKey = `${key}_${attr.name}`;
@@ -886,9 +852,9 @@ function flattenInterestingFields(node) {
       });
     }
 
-    // plain text node
     if (child.children.length === 0) {
       const value = child.textContent?.trim() || "";
+
       if (value) {
         if (result[key]) {
           const current = result[key];
@@ -899,10 +865,10 @@ function flattenInterestingFields(node) {
           result[key] = value;
         }
       }
+
       return;
     }
 
-    // nested simple text
     const nestedText = [...child.children]
       .filter((grandchild) => grandchild.children.length === 0)
       .map((grandchild) => grandchild.textContent?.trim() || "")
@@ -928,6 +894,32 @@ function pickFirstValue(flat, keys) {
   return undefined;
 }
 
+function findBestLink(flat) {
+  const priorityKeys = ["link", "guid", "url", "website", "loc", "link_href"];
+
+  for (const desired of priorityKeys) {
+    for (const [key, value] of Object.entries(flat)) {
+      if (key.toLowerCase() === desired) {
+        const values = Array.isArray(value) ? value : [value];
+        const valid = values.find(
+          (entry) => typeof entry === "string" && /^https?:\/\//i.test(entry),
+        );
+        if (valid) return valid;
+      }
+    }
+  }
+
+  for (const value of Object.values(flat)) {
+    const values = Array.isArray(value) ? value : [value];
+    const valid = values.find(
+      (entry) => typeof entry === "string" && /^https?:\/\//i.test(entry),
+    );
+    if (valid) return valid;
+  }
+
+  return undefined;
+}
+
 function findBestImage(flat) {
   for (const [key, value] of Object.entries(flat)) {
     const values = Array.isArray(value) ? value : [value];
@@ -945,6 +937,7 @@ function findBestImage(flat) {
       normalizedKey.includes("photo") ||
       normalizedKey.includes("thumbnail") ||
       normalizedKey.includes("media") ||
+      normalizedKey.includes("enclosure") ||
       normalizedKey.endsWith("_url") ||
       normalizedKey.includes("content_url");
 
@@ -954,6 +947,24 @@ function findBestImage(flat) {
 
   return undefined;
 }
+
+function formatFieldLabel(key) {
+  const map = {
+    creator: "Author",
+    pubDate: "Published",
+    source: "Source",
+    source_url: "Source URL",
+    credit: "Credit",
+  };
+
+  if (map[key]) return map[key];
+
+  return key
+    .replace(/_/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function getChildrenByLocalName(node, name) {
   return [...node.children].filter((child) => child.localName === name);
 }
@@ -1001,6 +1012,7 @@ function isTriviallySmallNode(tagName) {
     "url",
     "loc",
   ]);
+
   return small.has(tagName.toLowerCase());
 }
 
@@ -1014,9 +1026,7 @@ function isBadGenericCandidate(entry) {
   const leafText = (node.textContent || "").trim();
 
   if (isTriviallySmallNode(entry.tagName)) return true;
-
   if (!hasElementChildren && !hasAttributes) return true;
-
   if (!hasElementChildren && leafText.length < 80) return true;
 
   return false;
@@ -1030,9 +1040,8 @@ function scoreGenericCandidate(entry) {
   const childNames = new Set(
     childElements.map((child) => child.localName.toLowerCase()),
   );
-  const hasTitleLike = [...childNames].some((name) =>
-    TITLE_KEYS.includes(name),
-  );
+
+  const hasTitleLike = [...childNames].some((name) => TITLE_KEYS.includes(name));
   const hasDescriptionLike = [...childNames].some((name) =>
     DESCRIPTION_KEYS.includes(name),
   );
@@ -1041,7 +1050,8 @@ function scoreGenericCandidate(entry) {
     (name) =>
       IMAGE_KEYS.includes(name) ||
       name.includes("media") ||
-      name.includes("image"),
+      name.includes("image") ||
+      name.includes("enclosure"),
   );
 
   let score = 0;
