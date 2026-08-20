@@ -18,6 +18,7 @@ export default function XmlFeedViewerApp() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [viewMode, setViewMode] = useState("cards");
+  const [showWelcome, setShowWelcome] = useState(true);
 
   async function loadFeed() {
     setLoading(true);
@@ -108,15 +109,6 @@ export default function XmlFeedViewerApp() {
 
     if (parserError) return null;
     return doc;
-  }, [xmlText]);
-
-  const escapedXml = useMemo(() => {
-    if (!xmlText || xmlText.length > 200000) return "";
-
-    return xmlText
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
   }, [xmlText]);
 
   const analysis = useMemo(() => {
@@ -218,15 +210,87 @@ export default function XmlFeedViewerApp() {
 
   return (
     <div className="app">
-      <div className="container">
-        <div className="card header">
-          <div>
-            <h1>App Intelligence.ca</h1>
-            <h2>Generic XML Viewer</h2>
+      {showWelcome && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="welcome-title"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            display: "grid",
+            placeItems: "center",
+            padding: "1rem",
+            background: "rgba(2, 6, 23, 0.88)",
+            backdropFilter: "blur(8px)",
+          }}
+        >
+          <div
+            className="card"
+            style={{
+              width: "min(560px, 100%)",
+              textAlign: "center",
+              padding: "2rem",
+            }}
+          >
+            <img
+              src="/favicon.png"
+              alt=""
+              width="88"
+              height="88"
+              style={{ borderRadius: "1rem", marginBottom: "1rem" }}
+            />
+            <p style={{ margin: 0 }}>App Intelligence.ca</p>
+            <h1 id="welcome-title">XML Feed Inspector</h1>
             <p>
-              Load XML feeds, inspect structure, and switch between smart cards,
-              table, tree, and raw XML.
+              Inspect XML feeds before they reach listing platforms. Review
+              properties, units, images, availability, promotions, and raw feed
+              data in one place.
             </p>
+            <p>
+              This viewer does not persist your feed data. It only retrieves and
+              displays the feed for inspection. Use at your own risk.
+            </p>
+            <button type="button" onClick={() => setShowWelcome(false)}>
+              Open Inspector
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="container">
+        <header className="card header">
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "1rem",
+            }}
+          >
+            <img
+              src="/icon.png"
+              alt="XML Feed Inspector"
+              width="64"
+              height="64"
+              style={{ borderRadius: "0.8rem", flex: "0 0 auto" }}
+            />
+
+            <div>
+              <a
+                href="https://appintelligence.ca"
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: "inherit", textDecoration: "none" }}
+              >
+                <strong>App Intelligence.ca</strong>
+              </a>
+              <h1 style={{ margin: "0.15rem 0" }}>XML Feed Inspector</h1>
+              <p style={{ margin: 0 }}>
+                A feed preflight tool for inspecting smart cards, tables, XML
+                structure, and raw source data before syndication.
+              </p>
+            </div>
           </div>
 
           <div className="stats">
@@ -243,7 +307,7 @@ export default function XmlFeedViewerApp() {
               ))
             )}
           </div>
-        </div>
+        </header>
 
         <div className="card">
           <label htmlFor="feed-url">Feed URL</label>
@@ -508,14 +572,55 @@ export default function XmlFeedViewerApp() {
             <div className="xml-box">
               {!xmlText ? (
                 <p>Load a feed to view XML</p>
-              ) : xmlText.length > 200000 ? (
-                <p>Raw XML hidden because this feed is too large to render safely.</p>
               ) : (
-                <pre dangerouslySetInnerHTML={{ __html: escapedXml }} />
+                <textarea
+                  value={xmlText}
+                  readOnly
+                  spellCheck="false"
+                  aria-label="Raw XML feed"
+                  style={{
+                    width: "100%",
+                    minHeight: "70vh",
+                    resize: "vertical",
+                    padding: "1rem",
+                    border: "none",
+                    outline: "none",
+                    background: "transparent",
+                    color: "inherit",
+                    fontFamily:
+                      'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
+                    fontSize: "0.8rem",
+                    lineHeight: 1.5,
+                    whiteSpace: "pre",
+                  }}
+                />
               )}
             </div>
           </div>
         )}
+
+        <footer
+          className="card"
+          style={{ textAlign: "center", marginTop: "1rem" }}
+        >
+          <p>
+            <strong>Use at your own risk.</strong>
+          </p>
+          <p>
+            This viewer does not persist your feed data. It only retrieves and
+            displays the feed for inspection.
+          </p>
+          <p>
+            Provided by{" "}
+            <a
+              href="https://appintelligence.ca"
+              target="_blank"
+              rel="noreferrer"
+            >
+              App Intelligence.ca
+            </a>
+          </p>
+        </footer>
       </div>
     </div>
   );
