@@ -1,4 +1,3 @@
-
 # XML Feed Inspector
 
 ![Tests](https://img.shields.io/badge/tests-10%20passing-brightgreen)
@@ -121,36 +120,3 @@ Use at your own risk.
 ## Provided By
 
 [App Intelligence.ca](https://appintelligence.ca/)
-- Load XML feeds from a URL
-- Supports optional Basic Auth credentials
-- Optional proxy mode for CORS-protected feeds
-- Parses and previews listing data visually
-- Displays listing cards, unit table, and raw XML
-- Handles both listing-style and MITS-style feed structures
-- Includes automated tests for core UI flows
-
-## Tech Stack
-
-- React
-- Vite
-- JavaScript / JSX
-- Vitest
-- React Testing Library
-
-## Tested Flows
-
-- Renders app heading
-- Shows empty state before loading
-- Loads and displays listing data from XML
-- Shows error state when fetch fails
-
-## Running Locally
-
-```bash
-
-npm install
-npm run dev
-npm test
-npm run test:run
-
-
