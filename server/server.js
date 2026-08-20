@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 10000;
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://xml-feeds-viewer.netlify.app",
+  "https://xml-inspector.netlify.app/",
   ...(process.env.FRONTEND_URLS
     ? process.env.FRONTEND_URLS.split(",").map((s) => s.trim()).filter(Boolean)
     : []),
