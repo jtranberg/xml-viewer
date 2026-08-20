@@ -235,7 +235,7 @@ export default function XmlFeedViewerApp() {
             }}
           >
             <img
-              src="/favicon.png"
+              src="/icon.png"
               alt=""
               width="88"
               height="88"
