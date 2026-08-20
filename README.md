@@ -1,18 +1,4 @@
-# XML Feed Viewer
 
-![Tests](https://img.shields.io/badge/tests-4%20passing-brightgreen)
-![React](https://img.shields.io/badge/React-UI-61dafb)
-![Vite](https://img.shields.io/badge/Vite-Build-646cff)
-![Status](https://img.shields.io/badge/status-active-success)
-## Screenshot
-
-![XML Feed Viewer Screenshot](./public/screenshot.png)
-
-A lightweight XML feed viewer for inspecting and validating property listing feeds, with visual previews, unit breakdowns, and raw XML inspection.
-
-Built to streamline feed QA and improve listing accuracy by turning raw XML into a structured, human-readable interface.
-
-## Features
 # XML Feed Inspector
 
 ![Tests](https://img.shields.io/badge/tests-10%20passing-brightgreen)
