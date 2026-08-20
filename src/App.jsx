@@ -211,8 +211,10 @@ export default function XmlFeedViewerApp() {
       record.fields.forEach((field) => keySet.add(field.key));
     });
 
-    return ["title", "subtitle", ...Array.from(keySet).slice(0, 8)];
-  }, [analysis.records]);
+    const maxFields = analysis.profile?.detectedSchema === "mits" ? 30 : 8;
+
+    return ["title", "subtitle", ...Array.from(keySet).slice(0, maxFields)];
+  }, [analysis.profile?.detectedSchema, analysis.records]);
 
   return (
     <div className="app">
@@ -358,15 +360,12 @@ export default function XmlFeedViewerApp() {
                     key={record.id}
                   >
                     {record.image && (
-                      <div className="listing-media">
-                        <div className="listing-image-wrap">
-                          <img
-                            src={record.image}
-                            alt={record.title}
-                            className="listing-image"
-                          />
-                        </div>
-                      </div>
+                      <ListingMedia
+                        key={`${record.id}-${record.image}`}
+                        title={record.title}
+                        image={record.image}
+                        images={record.images}
+                      />
                     )}
 
                     <div className="listing-content">
@@ -381,14 +380,21 @@ export default function XmlFeedViewerApp() {
                       )}
 
                       <div className="generic-fields">
-                        {record.fields.slice(0, 8).map((field) => (
+                        {record.fields
+                          .slice(
+                            0,
+                            record.tagName === "ILS_Unit"
+                              ? record.fields.length
+                              : 8,
+                          )
+                          .map((field) => (
                           <div
                             className="generic-field"
                             key={`${record.id}-${field.key}`}
                           >
                             <strong>{field.key}:</strong> {field.value}
                           </div>
-                        ))}
+                          ))}
                       </div>
 
                       {record.link && (
@@ -398,7 +404,7 @@ export default function XmlFeedViewerApp() {
                           rel="noreferrer"
                           className="listing-button"
                         >
-                          View Unit
+                          {record.tagName === "ILS_Unit" ? "View Unit" : "Read Article"}
                         </a>
                       )}
                     </div>
@@ -592,10 +598,10 @@ function buildMitsRecords(doc) {
   const records = [];
 
   const propertyNodes = physicalProperties.flatMap((physicalProperty) =>
-  getChildrenByLocalName(physicalProperty, "Property"),
-);
+    getChildrenByLocalName(physicalProperty, "Property"),
+  );
 
-propertyNodes.forEach((property, propertyIndex) => {
+  propertyNodes.forEach((property, propertyIndex) => {
 
     const propertyIdNode = getFirstChildByLocalName(property, "PropertyID");
     const infoNode = getFirstChildByLocalName(property, "Information");
@@ -617,6 +623,8 @@ propertyNodes.forEach((property, propertyIndex) => {
     const description = infoNode
       ? getTextFromDescendants(infoNode, "LongDescription")
       : "";
+    const propertyId = property.getAttribute("IDValue") || "";
+    const propertyPromotion = getTextFromDescendants(property, "Promotional");
 
     unitNodes.forEach((unitNode, unitIndex) => {
       const availabilityNode = getFirstChildByLocalName(unitNode, "Availability");
@@ -629,16 +637,66 @@ propertyNodes.forEach((property, propertyIndex) => {
         "Unit",
       );
 
+      const identificationNodes = unitEl
+        ? [...unitEl.getElementsByTagName("*")].filter(
+            (el) => el.localName === "Identification",
+          )
+        : [];
+
+      const unitId =
+        unitNode.getAttribute("IDValue") ||
+        identificationNodes
+          .find((el) => el.getAttribute("IDType") === "ILS_UnitID")
+          ?.getAttribute("IDValue") ||
+        "";
+      const floorplanId =
+        identificationNodes
+          .find((el) => el.getAttribute("IDType") === "FloorPlanID")
+          ?.getAttribute("IDValue") || "";
+
       const unitNumber = unitEl
         ? getTextFromDescendants(unitEl, "MarketingName")
         : "";
       const beds = unitEl ? getTextFromDescendants(unitEl, "UnitBedrooms") : "";
       const baths = unitEl ? getTextFromDescendants(unitEl, "UnitBathrooms") : "";
-      const sqft = unitEl
-        ? getTextFromDescendants(unitEl, "MaxSquareFeet") ||
-          getTextFromDescendants(unitEl, "MinSquareFeet")
+      const minSqft = unitEl
+        ? getTextFromDescendants(unitEl, "MinSquareFeet")
         : "";
+      const maxSqft = unitEl
+        ? getTextFromDescendants(unitEl, "MaxSquareFeet")
+        : "";
+      const sqft = maxSqft || minSqft;
       const rent = unitEl ? getTextFromDescendants(unitEl, "MarketRent") : "";
+      const unitRent = unitEl ? getTextFromDescendants(unitEl, "UnitRent") : "";
+      const featured = unitEl ? getTextFromDescendants(unitEl, "Featured") : "";
+      const unitType = unitEl ? getTextFromDescendants(unitEl, "UnitType") : "";
+      const leasedStatus = unitEl
+        ? getTextFromDescendants(unitEl, "UnitLeasedStatus")
+        : "";
+      const occupancyStatus = unitEl
+        ? getTextFromDescendants(unitEl, "UnitOccupancyStatus")
+        : "";
+      const floorplanName = unitEl
+        ? getTextFromDescendants(unitEl, "FloorplanName")
+        : "";
+      const buildingName = unitEl
+        ? getTextFromDescendants(unitEl, "BuildingName")
+        : "";
+
+      const effectiveRentNode = getFirstChildByLocalName(unitNode, "EffectiveRent");
+      const effectiveRentMin = effectiveRentNode?.getAttribute("Min") || "";
+      const effectiveRentMax = effectiveRentNode?.getAttribute("Max") || "";
+      const effectiveRent = effectiveRentMin || effectiveRentMax;
+
+      const vacateDate = availabilityNode
+        ? formatMitsDate(getFirstChildByLocalName(availabilityNode, "VacateDate"))
+        : "";
+      const madeReadyDate = availabilityNode
+        ? formatMitsDate(getFirstChildByLocalName(availabilityNode, "MadeReadyDate"))
+        : "";
+      const vacancyClass = availabilityNode
+        ? getTextFromDescendants(availabilityNode, "VacancyClass")
+        : "";
 
       const files = [...unitNode.getElementsByTagName("*")]
         .filter((el) => el.localName === "File")
@@ -649,10 +707,15 @@ propertyNodes.forEach((property, propertyIndex) => {
         }))
         .filter((f) => f.src);
 
-      const photos = files
+      const sortedFiles = files.sort((a, b) => a.rank - b.rank);
+      const photos = sortedFiles
         .filter((f) => f.fileType === "Photo")
-        .sort((a, b) => a.rank - b.rank)
         .map((f) => f.src);
+      const images = sortedFiles.map((file) => ({
+        src: file.src,
+        label: file.fileType || "Image",
+        rank: file.rank,
+      }));
 
       records.push({
         id: `mits-${propertyIndex}-${unitIndex}`,
@@ -661,14 +724,33 @@ propertyNodes.forEach((property, propertyIndex) => {
         title: propertyName || `Property ${propertyIndex + 1}`,
         subtitle: [address1, city, region, postal].filter(Boolean).join(", "),
         description,
-        image: photos[0] || undefined,
+        image: photos[0] || images[0]?.src || undefined,
+        images,
         link: unitUrl || undefined,
         fields: [
           { key: "unit", value: unitNumber },
+          { key: "property ID", value: propertyId },
+          { key: "unit ID", value: unitId },
+          { key: "floorplan ID", value: floorplanId },
+          { key: "unit type", value: unitType },
           { key: "beds", value: beds },
           { key: "baths", value: baths },
-          { key: "sqft", value: sqft },
-          { key: "rent", value: rent },
+          { key: "min sqft", value: minSqft },
+          { key: "max sqft", value: maxSqft },
+          { key: "unit rent", value: unitRent },
+          { key: "market rent", value: rent },
+          { key: "effective rent min", value: effectiveRentMin },
+          { key: "effective rent max", value: effectiveRentMax },
+          { key: "featured", value: featured },
+          { key: "lease status", value: leasedStatus },
+          { key: "occupancy", value: occupancyStatus },
+          { key: "vacate date", value: vacateDate },
+          { key: "made-ready date", value: madeReadyDate },
+          { key: "vacancy class", value: vacancyClass },
+          { key: "floorplan", value: floorplanName },
+          { key: "building", value: buildingName },
+          { key: "promotion", value: propertyPromotion || "None" },
+          { key: "images", value: images.length ? String(images.length) : "" },
         ].filter((field) => field.value),
         raw: {
           propertyName,
@@ -676,18 +758,50 @@ propertyNodes.forEach((property, propertyIndex) => {
           city,
           region,
           postal,
+          propertyId,
+          propertyPromotion,
           unitNumber,
           beds,
           baths,
           sqft,
+          minSqft,
+          maxSqft,
           rent,
+          unitRent,
+          effectiveRent,
+          effectiveRentMin,
+          effectiveRentMax,
+          featured,
+          unitType,
+          leasedStatus,
+          occupancyStatus,
+          floorplanName,
+          buildingName,
+          unitId,
+          floorplanId,
+          vacateDate,
+          madeReadyDate,
+          vacancyClass,
           photos,
+          images,
         },
       });
     });
   });
 
   return records;
+}
+
+function formatMitsDate(node) {
+  if (!node) return "";
+
+  const year = node.getAttribute("Year");
+  const month = node.getAttribute("Month");
+  const day = node.getAttribute("Day");
+
+  if (!year || !month || !day) return "";
+
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 function buildGenericProfile(doc) {
@@ -1084,5 +1198,63 @@ function ViewCard({ title, description, active, onClick }) {
       <strong>{title}</strong>
       <span>{description}</span>
     </button>
+  );
+}
+
+function ListingMedia({ title, image, images = [] }) {
+  const [selectedImage, setSelectedImage] = useState(image);
+  const gallery = images.length > 0 ? images : [{ src: image, label: "Image" }];
+
+  return (
+    <div className="listing-media">
+      <div className="listing-image-wrap">
+        <img src={selectedImage} alt={title} className="listing-image" />
+      </div>
+
+      {gallery.length > 1 && (
+        <div
+          className="listing-thumbnails"
+          aria-label={`${title} image gallery`}
+          style={{
+            display: "flex",
+            gap: "0.5rem",
+            overflowX: "auto",
+            padding: "0.5rem",
+          }}
+        >
+          {gallery.map((item, index) => (
+            <button
+              key={`${item.src}-${index}`}
+              type="button"
+              onClick={() => setSelectedImage(item.src)}
+              title={`${item.label} ${index + 1}`}
+              aria-label={`Show ${item.label.toLowerCase()} ${index + 1}`}
+              style={{
+                border:
+                  selectedImage === item.src
+                    ? "2px solid #22c55e"
+                    : "1px solid #475569",
+                borderRadius: "0.4rem",
+                padding: 0,
+                background: "transparent",
+                cursor: "pointer",
+                flex: "0 0 auto",
+              }}
+            >
+              <img
+                src={item.src}
+                alt=""
+                style={{
+                  width: 72,
+                  height: 54,
+                  objectFit: "cover",
+                  display: "block",
+                }}
+              />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
