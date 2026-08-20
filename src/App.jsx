@@ -15,6 +15,7 @@ export default function XmlFeedViewerApp() {
 
   const [xmlText, setXmlText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingNotice, setLoadingNotice] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [viewMode, setViewMode] = useState("cards");
@@ -22,8 +23,15 @@ export default function XmlFeedViewerApp() {
 
   async function loadFeed() {
     setLoading(true);
+    setLoadingNotice("Connecting to the feed...");
     setError("");
     setCopied(false);
+
+    const wakeTimer = window.setTimeout(() => {
+      setLoadingNotice(
+        "The feed service may be waking up. The first request can take a few seconds.",
+      );
+    }, 2000);
 
     try {
       if (!feedUrl.trim()) {
@@ -84,6 +92,8 @@ export default function XmlFeedViewerApp() {
       setError(err instanceof Error ? err.message : "Failed to load feed");
       setXmlText("");
     } finally {
+      window.clearTimeout(wakeTimer);
+      setLoadingNotice("");
       setLoading(false);
     }
   }
@@ -210,6 +220,24 @@ export default function XmlFeedViewerApp() {
 
   return (
     <div className="app">
+      <style>{`
+        @keyframes inspector-spin {
+          to { transform: rotate(360deg); }
+        }
+
+        .inspector-spinner {
+          width: 0.9rem;
+          height: 0.9rem;
+          display: inline-block;
+          border: 2px solid currentColor;
+          border-top-color: transparent;
+          border-radius: 50%;
+          margin-right: 0.45rem;
+          vertical-align: -0.12rem;
+          animation: inspector-spin 0.75s linear infinite;
+        }
+      `}</style>
+
       {showWelcome && (
         <div
           role="dialog"
@@ -348,13 +376,30 @@ export default function XmlFeedViewerApp() {
 
           <div className="row">
             <button onClick={loadFeed} disabled={loading || !feedUrl.trim()}>
-              {loading ? "Loading..." : "Load Feed"}
+              {loading ? (
+                <>
+                  <span className="inspector-spinner" aria-hidden="true" />
+                  Loading Feed...
+                </>
+              ) : (
+                "Load Feed"
+              )}
             </button>
 
             <button onClick={copyXml} disabled={!xmlText}>
               {copied ? "Copied" : "Copy XML"}
             </button>
           </div>
+
+          {loading && (
+            <p
+              role="status"
+              aria-live="polite"
+              style={{ marginBottom: 0 }}
+            >
+              {loadingNotice}
+            </p>
+          )}
 
           <div className="links">
             {feedUrl && (
