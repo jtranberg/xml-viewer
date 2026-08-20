@@ -398,7 +398,7 @@ export default function XmlFeedViewerApp() {
                           rel="noreferrer"
                           className="listing-button"
                         >
-                          Read Article
+                          View Unit
                         </a>
                       )}
                     </div>
@@ -591,9 +591,11 @@ function buildMitsRecords(doc) {
   );
   const records = [];
 
-  physicalProperties.forEach((physicalProperty, propertyIndex) => {
-    const property = getFirstChildByLocalName(physicalProperty, "Property");
-    if (!property) return;
+  const propertyNodes = physicalProperties.flatMap((physicalProperty) =>
+  getChildrenByLocalName(physicalProperty, "Property"),
+);
+
+propertyNodes.forEach((property, propertyIndex) => {
 
     const propertyIdNode = getFirstChildByLocalName(property, "PropertyID");
     const infoNode = getFirstChildByLocalName(property, "Information");
