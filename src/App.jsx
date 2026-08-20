@@ -7,6 +7,24 @@ const DESCRIPTION_KEYS = ["description", "summary", "longdescription", "content"
 const LINK_KEYS = ["link", "url", "website", "loc", "unitavailabilityurl"];
 const IMAGE_KEYS = ["image", "photo", "thumbnail", "src", "logo"];
 
+function feedRequestError(response) {
+  if (response.status === 401) {
+    return new Error(
+      "The feed rejected the login. Please check the username and password and try again.",
+    );
+  }
+
+  if (response.status === 403) {
+    return new Error(
+      "Access to this feed was denied. Please confirm that these credentials have permission to view it.",
+    );
+  }
+
+  return new Error(
+    `The feed could not be loaded (${response.status} ${response.statusText}).`,
+  );
+}
+
 export default function XmlFeedViewerApp() {
   const [feedUrl, setFeedUrl] = useState("");
   const [username, setUsername] = useState("");
@@ -20,12 +38,14 @@ export default function XmlFeedViewerApp() {
   const [copied, setCopied] = useState(false);
   const [viewMode, setViewMode] = useState("cards");
   const [showWelcome, setShowWelcome] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
 
   async function loadFeed() {
     setLoading(true);
     setLoadingNotice("Connecting to the feed...");
     setError("");
     setCopied(false);
+    setSearchTerm("");
 
     const wakeTimer = window.setTimeout(() => {
       setLoadingNotice(
@@ -57,7 +77,7 @@ export default function XmlFeedViewerApp() {
         const proxyRes = await fetch(proxyUrl);
 
         if (!proxyRes.ok) {
-          throw new Error(`Proxy failed: ${proxyRes.status} ${proxyRes.statusText}`);
+          throw feedRequestError(proxyRes);
         }
 
         text = await proxyRes.text();
@@ -66,7 +86,7 @@ export default function XmlFeedViewerApp() {
           const directRes = await fetch(feedUrl, { headers });
 
           if (!directRes.ok) {
-            throw new Error(`Direct fetch failed: ${directRes.status} ${directRes.statusText}`);
+            throw feedRequestError(directRes);
           }
 
           text = await directRes.text();
@@ -80,7 +100,7 @@ export default function XmlFeedViewerApp() {
           const proxyRes = await fetch(proxyUrl);
 
           if (!proxyRes.ok) {
-            throw new Error(`Proxy failed: ${proxyRes.status} ${proxyRes.statusText}`);
+            throw feedRequestError(proxyRes);
           }
 
           text = await proxyRes.text();
@@ -206,17 +226,41 @@ export default function XmlFeedViewerApp() {
     };
   }, [xmlDoc]);
 
+  const filteredRecords = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return analysis.records;
+
+    return analysis.records.filter((record) => {
+      const searchableValues = [
+        record.title,
+        record.subtitle,
+        record.description,
+        record.link,
+        ...record.fields.flatMap((field) => [field.key, field.value]),
+      ];
+
+      return searchableValues
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(query);
+    });
+  }, [analysis.records, searchTerm]);
+
+  const recordLabel =
+    analysis.profile?.detectedSchema === "mits" ? "units" : "records";
+
   const tableColumns = useMemo(() => {
     const keySet = new Set();
 
-    analysis.records.slice(0, 25).forEach((record) => {
+    filteredRecords.slice(0, 25).forEach((record) => {
       record.fields.forEach((field) => keySet.add(field.key));
     });
 
     const maxFields = analysis.profile?.detectedSchema === "mits" ? 30 : 8;
 
     return ["title", "subtitle", ...Array.from(keySet).slice(0, maxFields)];
-  }, [analysis.profile?.detectedSchema, analysis.records]);
+  }, [analysis.profile?.detectedSchema, filteredRecords]);
 
   return (
     <div className="app">
@@ -419,9 +463,47 @@ export default function XmlFeedViewerApp() {
         </div>
 
         <div className="card">
+            <div className="card-header">
+              <h2>Search Feed</h2>
+              <span>
+                Showing {filteredRecords.length} of {analysis.records.length}{" "}
+                {recordLabel}
+              </span>
+            </div>
+
+            <div className="row">
+              <input
+                id="property-search"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search property, address, unit, or ID - it auto populates as you type"
+                aria-label="Search properties and units"
+                autoComplete="off"
+                disabled={analysis.records.length === 0}
+              />
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                disabled={!searchTerm}
+              >
+                Clear Search
+              </button>
+            </div>
+
+            {analysis.records.length === 0 && (
+              <p style={{ marginBottom: 0 }}>Load a feed to search its records.</p>
+            )}
+          </div>
+
+        <div className="card">
           <div className="card-header">
             <h2>Choose View</h2>
-            <span>{analysis.records.length} records</span>
+            <span>
+              {searchTerm
+                ? `${filteredRecords.length} of ${analysis.records.length}`
+                : analysis.records.length}{" "}
+              {recordLabel}
+            </span>
           </div>
 
           <div className="view-card-grid">
@@ -461,9 +543,11 @@ export default function XmlFeedViewerApp() {
 
             {analysis.records.length === 0 ? (
               <p>No data loaded</p>
+            ) : filteredRecords.length === 0 ? (
+              <p>No matching properties or units.</p>
             ) : (
               <div className="listing-grid">
-                {analysis.records.map((record) => (
+                {filteredRecords.map((record) => (
                   <div
                     className={`listing-card ${record.image ? "has-image" : "no-image"}`}
                     key={record.id}
@@ -530,6 +614,8 @@ export default function XmlFeedViewerApp() {
 
             {analysis.records.length === 0 ? (
               <p>No data loaded</p>
+            ) : filteredRecords.length === 0 ? (
+              <p>No matching properties or units.</p>
             ) : (
               <div className="table-wrap">
               <table className="table">
@@ -542,7 +628,7 @@ export default function XmlFeedViewerApp() {
                 </thead>
 
                 <tbody>
-                  {analysis.records.map((record) => {
+                  {filteredRecords.map((record) => {
                     const fieldMap = Object.fromEntries(
                       record.fields.map((field) => [field.key, field.value]),
                     );
